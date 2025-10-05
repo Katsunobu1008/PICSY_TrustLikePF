@@ -1,0 +1,17 @@
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# Build artifacts
+backend-java/target/
+frontend-vue/dist/
+server-node/node_modules/
+frontend-vue/node_modules/
+
+# Log files
+*.log
