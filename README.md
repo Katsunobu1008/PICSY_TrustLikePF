@@ -1,0 +1,2 @@
+# PICSY_TrustLikePF
+PICSYと情報投稿プラットフォームを融合したものを実装する。
