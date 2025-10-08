@@ -1,7 +1,7 @@
 {
   "name": "server-node",
   "version": "1.0.0",
-  "description": "",
+  "description": "BFF Server for PICSY TrustLike Platform",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
