@@ -17,12 +17,11 @@ public class ContributionVector {
     protected ContributionVector() {}
 
     public ContributionVector(UUID userId, double value) {
-        this.userId = userId;
-        this.value = value;
+        this.userId = userId; this.value = value;
     }
 
-    public UUID getUserId() { return userId; }
-    public void setUserId(UUID userId) { this.userId = userId; }
-    public double getValue() { return value; }
-    public void setValue(double value) { this.value = value; }
+    public UUID getUserId(){ return userId; }
+    public void setUserId(UUID userId){ this.userId = userId; }
+    public double getValue(){ return value; }
+    public void setValue(double value){ this.value = value; }
 }

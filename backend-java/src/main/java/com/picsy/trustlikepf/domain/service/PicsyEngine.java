@@ -6,15 +6,18 @@ import com.picsy.trustlikepf.domain.entity.User;
 import com.picsy.trustlikepf.domain.repository.ContributionVectorRepository;
 import com.picsy.trustlikepf.domain.repository.EvaluationMatrixRepository;
 import com.picsy.trustlikepf.domain.repository.UserRepository;
+
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class PicsyEngine {
-
     private final EvaluationMatrixRepository eRepo;
     private final ContributionVectorRepository cRepo;
     private final UserRepository userRepo;
@@ -27,9 +30,9 @@ public class PicsyEngine {
         this.userRepo = userRepo;
     }
 
-    @Scheduled(fixedDelayString = "${picsy.engine.interval.ms:300000}") // 5min
+    @Scheduled(fixedDelayString = "${picsy.engine.interval.ms:300000}")
     @Transactional
-    public void recalcC(){
+    public void recalcC() {
         List<UUID> users = userRepo.findAll().stream().map(User::getUserId).toList();
         int N = users.size();
         if (N == 0) return;
@@ -43,7 +46,7 @@ public class PicsyEngine {
             rows.put(u, eRepo.findByEvaluator(u));
         }
 
-        for (int iter=0; iter<100; iter++){
+        for (int iter = 0; iter < 100; iter++) {
             Map<UUID, Double> next = new HashMap<>();
             for (UUID j : users) next.put(j, 0.0);
 
@@ -58,8 +61,8 @@ public class PicsyEngine {
                     next.put(j, next.get(j) + c_i * v);
                 }
                 double add = (N > 1) ? Eii / (N - 1) : 0.0;
-                if (add != 0.0){
-                    for (UUID j : users){
+                if (add != 0.0) {
+                    for (UUID j : users) {
                         if (j.equals(i)) continue;
                         next.put(j, next.get(j) + c_i * add);
                     }
@@ -70,7 +73,7 @@ public class PicsyEngine {
             if (sum == 0) break;
             double scale = N / sum;
             double diff = 0.0;
-            for (UUID u : users){
+            for (UUID u : users) {
                 double v = next.get(u) * scale;
                 diff += Math.pow(v - c.get(u), 2);
                 c.put(u, v);
@@ -78,8 +81,8 @@ public class PicsyEngine {
             if (Math.sqrt(diff) < 1e-9) break;
         }
 
-        for (UUID u : users){
-            double v = Math.round(c.get(u) * 1_000_000d)/1_000_000d;
+        for (UUID u : users) {
+            double v = Math.round(c.get(u) * 1_000_000d) / 1_000_000d;
             cRepo.save(new ContributionVector(u, v));
         }
     }
