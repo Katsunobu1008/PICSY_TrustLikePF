@@ -1,18 +1,16 @@
-# Java 21の公式イメージをベースにする
-FROM eclipse-temurin:21-jdk-jammy
-
-WORKDIR /app
-COPY .mvn/ .mvn
-COPY mvnw pom.xml ./
-# まず依存関係だけをダウンロードする（キャッシュ効率化のため）
-RUN ./mvnw dependency:go-offline
+# --- build stage ---
+FROM maven:3.9.8-eclipse-temurin-21 AS build
+WORKDIR /workspace
+COPY pom.xml .
+RUN mvn -B -q -DskipTests dependency:go-offline
 COPY src ./src
-# アプリケーションをビルド・パッケージ化する
-RUN ./mvnw package -DskipTests
+# package フェーズで spring-boot:repackage も走る
+RUN mvn -B -DskipTests package
 
-# 実行ステージ
+# --- run stage ---
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
-COPY --from=0 /app/target/*.jar app.jar
+# pom.xml の <finalName>app</finalName> に合わせる
+COPY --from=build /workspace/target/app.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java","-jar","app.jar"]

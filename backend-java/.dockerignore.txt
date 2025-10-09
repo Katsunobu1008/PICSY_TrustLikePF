@@ -1,0 +1,7 @@
+# これらはコンテキストに不要
+target
+**/target
+.git
+.gitignore
+.DS_Store
+*.iml

@@ -1,56 +1,40 @@
-# docker-compose.yml
-
-
 services:
-  # 1. PostgreSQL データベースサービス
   db:
     image: postgres:15
-    container_name: picsy_db
-    ports:
-      - "5432:5432" # ローカルPCの5432番ポートをコンテナの5432番ポートに接続
     environment:
       - POSTGRES_DB=picsy_pf
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
-    volumes:
-      - postgres-data:/var/lib/postgresql/data # DBデータを永続化
-    networks:
-      - picsy-net
+    ports: ["5432:5432"]
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    networks: [picsy-net]
 
-  # 2. Java バックエンドAPIサービス
   backend:
-    container_name: picsy_backend
     build:
-      context: ./backend-java # ./backend-java ディレクトリのDockerfileを使用
-    ports:
-      - "8081:8080" # ローカルの8081番をコンテナの8080番に（直接アクセス用）
+      context: ./backend-java          # ★ ここに上の Dockerfile がある
+      dockerfile: Dockerfile           # ★ 明示して参照ズレを撲滅
+    depends_on: [db]
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/picsy_pf
       - SPRING_DATASOURCE_USERNAME=user
       - SPRING_DATASOURCE_PASSWORD=password
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=none # スキーマはFlywayで管理
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=none
       - SPRING_FLYWAY_ENABLED=true
-    depends_on:
-      - db # dbサービスが起動してから起動する
-    networks:
-      - picsy-net
+    ports: ["8081:8080"]
+    networks: [picsy-net]
 
-  # 3. Node.js Webサーバー (BFF) サービス
   web:
-    container_name: picsy_web
     build:
-      context: ./server-node # ./server-node ディレクトリのDockerfileを使用
-    ports:
-      - "8080:3000" # アプリケーションへのメインアクセスポイント
+      context: ./server-node
+      dockerfile: Dockerfile
     environment:
-      - BACKEND_API_URL=http://backend:8080 # Javaバックエンドのコンテナ名で指定
-    depends_on:
-      - backend # backendサービスが起動してから起動する
-    networks:
-      - picsy-net
+      - BACKEND_API_URL=http://backend:8080
+    ports: ["8080:3000"]
+    depends_on: [backend]
+    networks: [picsy-net]
 
 volumes:
-  postgres-data: # データベースのデータを保存するための名前付きボリューム
+  postgres-data:
 
 networks:
-  picsy-net: # コンテナ間通信用のカスタムネットワーク
+  picsy-net:
