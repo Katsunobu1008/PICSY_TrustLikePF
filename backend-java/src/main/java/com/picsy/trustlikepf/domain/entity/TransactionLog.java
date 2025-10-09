@@ -1,3 +1,4 @@
+// backend-java/src/main/java/com/picsy/trustlikepf/domain/entity/TransactionLog.java
 package com.picsy.trustlikepf.domain.entity;
 
 import java.math.BigDecimal;

@@ -1,3 +1,4 @@
+-- backend-java/src/main/resources/db/migration/V1__Initial_Schema.sql
 -- ========== 基本 ==========
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 

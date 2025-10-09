@@ -1,3 +1,4 @@
+-- backend-java/src/main/resources/db/migration/V2__Seed_Initial_Data.sql
 -- Users: Alice, Bob, Carol, David
 INSERT INTO users(user_id, name, commission_rate) VALUES
   ('11111111-1111-1111-1111-111111111111', 'Alice', 0.20),

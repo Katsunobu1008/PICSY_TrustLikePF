@@ -1,3 +1,4 @@
+// backend-java/src/main/java/com/picsy/trustlikepf/domain/entity/ContributionVector.java
 @Entity
 @Table(name="contribution_vector")
 public class ContributionVector {
