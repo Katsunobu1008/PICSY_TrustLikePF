@@ -97,38 +97,45 @@ public void like(LikeRequest req){
 }
 
 
-    @Transactional
-    public void quote(QuoteRequest req){
-        if (txRepo.findByRequestId(req.requestId()).isPresent()) return;
+@Transactional
+public void quote(QuoteRequest req){
+    if (txRepo.findByRequestId(req.requestId()).isPresent()) return;
 
-        var post = postRepo.findById(req.postId()).orElseThrow();
-        UUID actor = req.actorId();
-        double beta = (req.betaOverride()!=null)? req.betaOverride() : defaultBeta;
+    // 引用「対象」そのもの
+    var quoted = postRepo.findById(req.postId()).orElseThrow();
+    UUID actor = req.actorId();
+    double beta = (req.betaOverride()!=null)? req.betaOverride() : defaultBeta;
 
-        var parentPost = postRepo.findById(post.getParentPostId()).orElseThrow();
-        UUID s = parentPost.getOriginalPostId();
-        double rho_s = postRepo.findById(s).orElseThrow().getRoyaltyRate().doubleValue();
-        UUID k_prev = parentPost.getCreatorId();
+    // s/k_prev は「引用対象」から引く
+    UUID s = quoted.getOriginalPostId();
+    UUID k_prev = quoted.getCreatorId();
+    boolean quotedIsOriginal = (quoted.getParentPostId() == null);
 
-        double c_k = cRepo.findById(actor).orElseThrow().getValue();
-        ERow row = eService.lockAndLoad(actor, Set.of(actor, s, k_prev));
-        double Ekk = row.cols.get(actor).getValue();
-        if (Ekk * c_k < beta) throw new IllegalStateException("insufficient purchasing power.");
+    double c_k = cRepo.findById(actor).orElseThrow().getValue();
+    ERow row = eService.lockAndLoad(actor, Set.of(actor, s, k_prev));
+    double Ekk = row.cols.get(actor).getValue();
+    if (Ekk * c_k < beta) throw new IllegalStateException("INSUFFICIENT_PURCHASING_POWER");
 
-        // 1) 自己ループ減算
-        eService.add(row.cols.get(actor), -beta);
-        // 2) 分配
-        if (post.getParentPostId().equals(s)) {
-            eService.add(row.cols.get(s), beta);
-        } else {
-            eService.add(row.cols.get(s), rho_s * beta);
-            eService.add(row.cols.get(k_prev), (1 - rho_s) * beta);
-        }
-
-        String details = "{\"s\":\""+s+"\",\"rho_s\":"+String.format("%.6f", rho_s)
-                +",\"k_prev\":\""+k_prev+"\"}";
-        var tx = new TransactionLog("QUOTE", actor, post.getPostId(),
-                BigDecimal.valueOf(beta), req.requestId(), details);
-        txRepo.save(tx);
+    // 1) 自己ループ減算
+    eService.add(row.cols.get(actor), -beta);
+    // 2) 分配：原作直引用か、引用の引用か
+    if (quotedIsOriginal) {
+        eService.add(row.cols.computeIfAbsent(s, id -> new EvaluationMatrix(actor,id,0.0)), beta);
+    } else {
+        eService.add(row.cols.computeIfAbsent(s, id -> new EvaluationMatrix(actor,id,0.0)), /* ρ_s * */
+                     postRepo.findById(s).orElseThrow().getRoyaltyRate().doubleValue() * beta);
+        eService.add(row.cols.computeIfAbsent(k_prev, id -> new EvaluationMatrix(actor,id,0.0)),
+                     (1 - postRepo.findById(s).orElseThrow().getRoyaltyRate().doubleValue()) * beta);
     }
+
+    String details = "{\"s\":\""+s+"\",\"rho_s\":"+String.format("%.6f",
+                         postRepo.findById(s).orElseThrow().getRoyaltyRate().doubleValue())
+                     +",\"k_prev\":\""+k_prev+"\"}";
+    var tx = new TransactionLog("QUOTE", actor, quoted.getPostId(),
+            BigDecimal.valueOf(beta), req.requestId(), details);
+    txRepo.save(tx);
+
+    // ★将来：ここで「新しい引用投稿」を作成する createPost() を呼ぶ（MVPでは別APIでもOK）
+}
+
 }
