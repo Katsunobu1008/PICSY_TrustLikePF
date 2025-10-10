@@ -7,6 +7,7 @@ import com.picsy.trustlikepf.domain.repository.PostRepository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.*;
 
@@ -22,25 +23,31 @@ public class PostController {
     @PostMapping
     @Transactional
     public Map<String,Object> create(@RequestBody CreatePostRequest req){
-        // 原作 or 引用の判定
         UUID postId = UUID.randomUUID();
-        UUID originalId = (req.parentPostId()==null) ? postId :
-                          postRepo.findById(req.parentPostId()).orElseThrow().getOriginalPostId();
 
-        // エンティティは簡易 setter を用意していないため、ここは JPA の insert 用に
-        // エンティティ・コンストラクタ or Builder を追加しても良い。
-        // MVP簡易：native insert でも可だが、ここでは簡便のためエンティティに setter を仮想的に置くイメージで記述します。
+        UUID originalId;
+        if (req.parentPostId() == null) {
+            originalId = postId; // 原作
+        } else {
+            var parent = postRepo.findById(req.parentPostId())
+                    .orElseThrow(() -> new IllegalArgumentException("parent post not found"));
+            originalId = parent.getOriginalPostId();
+        }
 
-        Post p = new PostReflective(); // 下↓の補足参照
-        ((PostReflective)p).setPostId(postId);
-        ((PostReflective)p).setCreatorId(req.creatorId());
-        ((PostReflective)p).setContentText(req.contentText());
-        ((PostReflective)p).setParentPostId(req.parentPostId());
-        ((PostReflective)p).setOriginalPostId(originalId);
-        ((PostReflective)p).setRoyaltyRate(
-                (req.parentPostId()==null) ?
-                java.math.BigDecimal.valueOf(Optional.ofNullable(req.royaltyRate()).orElse(0.70)) : null);
-        ((PostReflective)p).setCreatedAt(OffsetDateTime.now());
+        Post p = new Post();
+        p.setPostId(postId);
+        p.setCreatorId(req.creatorId());
+        p.setContentText(Objects.requireNonNullElse(req.contentText(), "")); // 空文字許容
+        p.setParentPostId(req.parentPostId());
+        p.setOriginalPostId(originalId);
+        if (req.parentPostId() == null) {
+            // 原作のみ royalty_rate 必須（DDL 合致）
+            double rho = Objects.requireNonNullElse(req.royaltyRate(), 0.70);
+            p.setRoyaltyRate(BigDecimal.valueOf(rho));
+        } else {
+            p.setRoyaltyRate(null);
+        }
+        p.setCreatedAt(OffsetDateTime.now());
 
         postRepo.save(p);
 
@@ -49,10 +56,13 @@ public class PostController {
 
     @GetMapping("/timeline")
     public List<Map<String,Object>> timeline(){
-        // グローバル時系列（MVP）: created_at DESC
-        // Repositoryにクエリを生やしても良いが、まずは findAll() → ソートでもOK
         List<Post> all = postRepo.findAll();
-        all.sort(Comparator.comparing(Post::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
+        all.sort(
+            Comparator.comparing(
+                Post::getCreatedAt,
+                Comparator.nullsLast(Comparator.naturalOrder())
+            ).reversed()
+        );
         List<Map<String,Object>> out = new ArrayList<>();
         for (Post p : all){
             out.add(Map.of(
@@ -67,5 +77,4 @@ public class PostController {
         }
         return out;
     }
-
 }
