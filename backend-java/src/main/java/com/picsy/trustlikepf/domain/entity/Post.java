@@ -2,11 +2,13 @@
 package com.picsy.trustlikepf.domain.entity;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 @Entity
@@ -19,7 +21,7 @@ public class Post {
     @Column(name="creator_id", nullable=false)
     private UUID creatorId;
 
-    @Column(name="content_text", nullable=false)        // ★ 追加
+    @Column(name="content_text", nullable=false)
     private String contentText;
 
     @Column(name="parent_post_id")
@@ -31,25 +33,31 @@ public class Post {
     @Column(name="royalty_rate", precision=5, scale=4)
     private BigDecimal royaltyRate;
 
-    @Column(name="created_at")                          // 任意で付与（表示用）
-    private java.time.OffsetDateTime createdAt;
+    @Column(name="created_at")
+    private OffsetDateTime createdAt;
 
     protected Post(){}
 
+    // ---------- getters ----------
     public UUID getPostId(){ return postId; }
     public UUID getCreatorId(){ return creatorId; }
-    public String getContentText(){ return contentText; }   // ★ getter
+    public String getContentText(){ return contentText; }
     public UUID getParentPostId(){ return parentPostId; }
     public UUID getOriginalPostId(){ return originalPostId; }
     public BigDecimal getRoyaltyRate(){ return royaltyRate; }
+    public OffsetDateTime getCreatedAt(){ return createdAt; }
 
-// Post.java の末尾に setter を暫定追加（MVP簡便のため）
-public void setPostId(UUID id){ this.postId = id; }
-public void setCreatorId(UUID id){ this.creatorId = id; }
-public void setContentText(String t){ this.contentText = t; }
-public void setParentPostId(UUID id){ this.parentPostId = id; }
-public void setOriginalPostId(UUID id){ this.originalPostId = id; }
-public void setRoyaltyRate(BigDecimal r){ this.royaltyRate = r; }
-public void setCreatedAt(java.time.OffsetDateTime dt){ this.createdAt = dt; }
+    // ---------- setters (MVP用。将来はFactoryに寄せてもOK) ----------
+    public void setPostId(UUID postId){ this.postId = postId; }
+    public void setCreatorId(UUID creatorId){ this.creatorId = creatorId; }
+    public void setContentText(String contentText){ this.contentText = contentText; }
+    public void setParentPostId(UUID parentPostId){ this.parentPostId = parentPostId; }
+    public void setOriginalPostId(UUID originalPostId){ this.originalPostId = originalPostId; }
+    public void setRoyaltyRate(BigDecimal royaltyRate){ this.royaltyRate = royaltyRate; }
+    public void setCreatedAt(OffsetDateTime createdAt){ this.createdAt = createdAt; }
 
+    @PrePersist
+    public void onCreate() {
+        if (createdAt == null) createdAt = OffsetDateTime.now();
+    }
 }
