@@ -42,4 +42,14 @@ public class Post {
     public UUID getParentPostId(){ return parentPostId; }
     public UUID getOriginalPostId(){ return originalPostId; }
     public BigDecimal getRoyaltyRate(){ return royaltyRate; }
+
+// Post.java の末尾に setter を暫定追加（MVP簡便のため）
+public void setPostId(UUID id){ this.postId = id; }
+public void setCreatorId(UUID id){ this.creatorId = id; }
+public void setContentText(String t){ this.contentText = t; }
+public void setParentPostId(UUID id){ this.parentPostId = id; }
+public void setOriginalPostId(UUID id){ this.originalPostId = id; }
+public void setRoyaltyRate(BigDecimal r){ this.royaltyRate = r; }
+public void setCreatedAt(java.time.OffsetDateTime dt){ this.createdAt = dt; }
+
 }
