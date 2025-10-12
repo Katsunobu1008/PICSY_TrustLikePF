@@ -31,8 +31,8 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import api from '../lib/api'
-import { getState, optimisticSpend } from '../stores/power' // ← bus を削除
-import { v4 as uuidv4 } from 'uuid'
+import { getState, optimisticSpend } from '../stores/power'
+import { uuidv4 } from '../lib/uuid'
 
 const props = defineProps({ post: { type:Object, required:true } })
 const emit = defineEmits(['need-refresh'])
