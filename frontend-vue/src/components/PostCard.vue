@@ -31,7 +31,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import api from '../lib/api'
-import { getState, optimisticSpend, bus } from '../stores/power'
+import { getState, optimisticSpend } from '../stores/power' // ← bus を削除
 import { v4 as uuidv4 } from 'uuid'
 
 const props = defineProps({ post: { type:Object, required:true } })
@@ -96,7 +96,6 @@ async function quote(){
 }
 
 onMounted(loadAffordance)
-// 投稿やアクターが変わったときも更新
 watch(() => [power.actor, props.post.postId], loadAffordance)
 </script>
 
