@@ -1,35 +1,45 @@
-// RecoveryJob.java
-
+// backend-java/src/main/java/com/picsy/trustlikepf/domain/service/RecoveryJob.java
 package com.picsy.trustlikepf.domain.service;
 
+import java.util.List;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.stereotype.Service;
 
+import com.picsy.trustlikepf.domain.entity.User;
 import com.picsy.trustlikepf.domain.repository.UserRepository;
 
-
-@Component
+@Service
 public class RecoveryJob {
+
     private final SettingsService settings;
     private final EvaluationRowService eService;
-    private final UserRepository userRepo;
+    private final UserRepository users;
 
-    public RecoveryJob(SettingsService settings, EvaluationRowService eService, UserRepository userRepo) {
+    @Value("${picsy.recovery.enabled:true}")
+    private boolean enabled;
+
+    public RecoveryJob(SettingsService settings, EvaluationRowService eService, UserRepository users) {
         this.settings = settings;
         this.eService = eService;
-        this.userRepo = userRepo;
+        this.users = users;
     }
 
-    // デフォルト1時間。必要に応じて application.properties で picsy.recovery.fixedDelay.ms を調整
+    // デフォルト 1時間おき。enabled=false なら即 return。
     @Scheduled(fixedDelayString = "${picsy.recovery.fixedDelay.ms:3600000}")
-    @Transactional
-    public void run() {
+    public void scheduled(){
+        if (!enabled) return;
+        run();
+    }
+
+    /** 全ユーザーに自然回収を1回適用（手動実行でも使用） */
+    public void run(){
         double gamma = settings.getGamma();
-        for (UUID uid : userRepo.findAll().stream().map(u -> u.getUserId()).toList()) {
-            eService.applyRecovery(uid, gamma);
+        List<UUID> ids = users.findAll().stream().map(User::getUserId).toList();
+        for (UUID id : ids){
+            eService.applyRecovery(id, gamma);
         }
     }
 }
