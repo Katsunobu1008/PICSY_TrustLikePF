@@ -1,19 +1,18 @@
 <!-- frontend-vue/src/views/HomeView.vue -->
-<!-- 役割: 左にCompose、右にTimeline を置く。 -->
 <template>
   <div class="grid">
     <section>
       <ComposePost />
     </section>
     <section>
-      <Timeline />
+      <PostTimeline /> <!-- ← ここを修正 -->
     </section>
   </div>
 </template>
 
 <script setup>
 import ComposePost from '../components/ComposePost.vue'
-import Timeline from '../components/Timeline.vue'
+import PostTimeline from '../components/PostTimeline.vue'  // ← ここを修正
 </script>
 
 <style scoped>
