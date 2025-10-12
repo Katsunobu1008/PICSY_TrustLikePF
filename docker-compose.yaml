@@ -2,25 +2,41 @@ services:
   db:
     image: postgres:15
     environment:
-      - POSTGRES_DB=picsy_pf
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-    ports: ["5432:5432"]
-    volumes: [postgres-data:/var/lib/postgresql/data]
+      POSTGRES_DB: picsy_pf
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      TZ: Asia/Tokyo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d picsy_pf -U user"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
     networks: [picsy-net]
 
   backend:
     build:
-      context: ./backend-java          # ★ ここに上の Dockerfile がある
-      dockerfile: Dockerfile           # ★ 明示して参照ズレを撲滅
-    depends_on: [db]
+      context: ./backend-java
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy            # ★ DBがREADYになってから起動
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/picsy_pf
-      - SPRING_DATASOURCE_USERNAME=user
-      - SPRING_DATASOURCE_PASSWORD=password
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=none
-      - SPRING_FLYWAY_ENABLED=true
-    ports: ["8081:8080"]
+      SPRING_PROFILES_ACTIVE: prod            # ★ プロファイル固定
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/picsy_pf
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none     # ★ スキーマはFlywayに委譲
+      SPRING_FLYWAY_ENABLED: "true"
+      TZ: Asia/Tokyo
+    ports:
+      - "8081:8080"                           # ホスト 8081 → backend:8080
+    restart: unless-stopped
     networks: [picsy-net]
 
   web:
@@ -28,9 +44,14 @@ services:
       context: ./server-node
       dockerfile: Dockerfile
     environment:
-      - BACKEND_API_URL=http://backend:8080
-    ports: ["8080:3000"]
-    depends_on: [backend]
+      BACKEND_API_URL: http://backend:8080    # Node→Springの内部URL
+      TZ: Asia/Tokyo
+    ports:
+      - "8080:3000"                           # ホスト 8080 → Node:3000
+    depends_on:
+      backend:
+        condition: service_started            # (proxyなので健康判定は簡素でOK)
+    restart: unless-stopped
     networks: [picsy-net]
 
 volumes:
