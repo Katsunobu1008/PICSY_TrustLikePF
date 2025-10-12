@@ -1,4 +1,4 @@
-// GlobalExceptionHandler.java
+// backend-java/src/main/java/com/picsy/trustlikepf/api/GlobalExceptionHandler.java
 package com.picsy.trustlikepf.api;
 
 import org.springframework.http.HttpStatus;
@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    public static record ErrorBody(String code, String message) {} // ← public にする
+    public static record ErrorBody(String code, String message) {} // ★ public に
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorBody> handleIllegalState(IllegalStateException ex){
@@ -19,6 +19,8 @@ public class GlobalExceptionHandler {
             status = HttpStatus.FORBIDDEN;
         } else if ("INSUFFICIENT_PURCHASING_POWER".equals(code)) {
             status = HttpStatus.PRECONDITION_FAILED;
+        } else if ("ACCOUNT_FROZEN".equals(code) || "TARGET_FROZEN".equals(code)) { // ★ 追加
+            status = HttpStatus.FORBIDDEN;
         }
         return ResponseEntity.status(status).body(new ErrorBody(code, code));
     }
