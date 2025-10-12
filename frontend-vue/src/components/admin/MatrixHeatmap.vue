@@ -64,7 +64,8 @@ async function load(){
     const b = await api.get('/api/v1/dashboard/eval-matrix')
     rows.value = b.data.rows || []
     buildMap()
-  } catch(e) {
+  } catch(err) {
+    console.debug('MatrixHeatmap load failed:', err) // ← これで参照される
     error.value = true
   }
 }
