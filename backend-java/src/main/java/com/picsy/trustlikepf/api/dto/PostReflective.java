@@ -1,11 +1,11 @@
 // PostReflective.java
 package com.picsy.trustlikepf.api.dto;
 
-import com.picsy.trustlikepf.domain.entity.Post;
-
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.UUID;
+
+import com.picsy.trustlikepf.domain.entity.Post;
 
 public record PostReflective(
         UUID postId,
@@ -14,13 +14,15 @@ public record PostReflective(
         UUID parentPostId,
         UUID originalPostId,
         BigDecimal royaltyRate,
-        Instant createdAt
+        OffsetDateTime createdAt
 ) {
-    public static PostReflective from(Post p, String contentTextIfAny){
+    public static PostReflective from(Post p){
         return new PostReflective(
-                p.getPostId(), p.getCreatorId(),
-                contentTextIfAny, // 今は簡易。将来は posts テーブル拡張/別テーブルでメディアや本文を解決
-                p.getParentPostId(), p.getOriginalPostId(),
+                p.getPostId(),
+                p.getCreatorId(),
+                p.getContentText(),
+                p.getParentPostId(),
+                p.getOriginalPostId(),
                 p.getRoyaltyRate(),
                 p.getCreatedAt()
         );
