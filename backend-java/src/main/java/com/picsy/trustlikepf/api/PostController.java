@@ -34,7 +34,7 @@ public class PostController {
     private final PostCommandService postCmd;
     private final TransactionService tx;
     private final PostRepository posts;
-    private final AffordanceService affordance; // ★ 購買力可否の判定
+    private final AffordanceService affordance;
 
     public PostController(PostCommandService postCmd,
                           TransactionService tx,
@@ -81,9 +81,10 @@ public class PostController {
     /** フィード（新しい順） */
     @GetMapping("/feed")
     public ResponseEntity<List<PostReflective>> feed(@RequestParam(defaultValue = "50") int size){
-        var page = PageRequest.of(0, Math.min(Math.max(size,1), 200),
+        var pageable = PageRequest.of(0, Math.min(Math.max(size,1), 200),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
-        List<PostReflective> out = posts.findAll(page).stream().map(PostReflective::from).toList();
+        var page = posts.findAll(pageable);
+        var out = page.getContent().stream().map(PostReflective::from).toList();
         return ResponseEntity.ok(out);
     }
 
