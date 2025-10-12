@@ -7,25 +7,28 @@ import java.util.UUID;
 
 import com.picsy.trustlikepf.domain.entity.Post;
 
+/**
+ * API レイヤでの投稿ビュー。DB/ドメインの精度を保つため rate は BigDecimal を採用。
+ * Record のフィールド順は JSON のプロパティ順にも影響する（Jackson既定）。
+ */
 public record PostReflective(
         UUID postId,
         UUID creatorId,
-        String contentText,
         UUID parentPostId,
         UUID originalPostId,
+        String contentText,
         BigDecimal royaltyRate,
         Instant createdAt
-        // 将来: actions, powerHints などを追加しやすい
 ) {
     public static PostReflective from(Post p){
         return new PostReflective(
                 p.getPostId(),
                 p.getCreatorId(),
-                p.getContentText(),
                 p.getParentPostId(),
                 p.getOriginalPostId(),
-                p.getRoyaltyRate(),
-                p.getCreatedAt()
+                p.getContentText(),
+                p.getRoyaltyRate(),   // 変換不要（BigDecimalのまま）
+                p.getCreatedAt()      // Post は Instant を返す想定
         );
     }
 }
