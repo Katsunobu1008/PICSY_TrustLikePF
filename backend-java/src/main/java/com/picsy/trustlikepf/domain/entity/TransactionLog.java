@@ -1,4 +1,3 @@
-// backend-java/src/main/java/com/picsy/trustlikepf/domain/entity/TransactionLog.java
 package com.picsy.trustlikepf.domain.entity;
 
 import java.math.BigDecimal;
@@ -39,8 +38,8 @@ public class TransactionLog {
     @Column(name = "request_id", nullable = false, unique = true)
     private UUID requestId;
 
-    // JSONB: MVP は String として保存（後で Hibernate Types に置換可）
-    @Column(name = "details", columnDefinition = "jsonb")
+    // ★ H2 互換のため columnDefinition を外す（本番は Flyway が JSONB を作成）
+    @Column(name = "details")
     private String details;
 
     @Column(name = "created_at", nullable = false)
