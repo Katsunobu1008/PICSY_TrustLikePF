@@ -1,4 +1,4 @@
-// Setting.java
+// backend-java/src/main/java/com/picsy/trustlikepf/domain/entity/Setting.java
 package com.picsy.trustlikepf.domain.entity;
 
 import java.time.Instant;
@@ -14,28 +14,29 @@ import jakarta.persistence.Table;
 @Table(name = "settings")
 public class Setting {
     @Id
-    @Column(name = "key", nullable = false)
+    @Column(name="key", nullable=false)
     private String key;
 
-    @Column(name = "value", nullable = false)
+    @Column(name="value", nullable=false)
     private String value;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(name="updated_at", nullable=false)
     private Instant updatedAt;
 
-    protected Setting() {}
+    public Setting(){}
 
-    public Setting(String key, String value) {
+    public Setting(String key, String value){
         this.key = key;
         this.value = value;
         this.updatedAt = Instant.now();
     }
 
     @PrePersist @PreUpdate
-    public void touch() { this.updatedAt = Instant.now(); }
+    public void touch(){ this.updatedAt = Instant.now(); }
 
-    public String getKey() { return key; }
-    public String getValue() { return value; }
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setValue(String value) { this.value = value; }
+    public String getKey(){ return key; }
+    public String getValue(){ return value; }
+    public Instant getUpdatedAt(){ return updatedAt; }
+
+    public void setValue(String value){ this.value = value; }
 }
