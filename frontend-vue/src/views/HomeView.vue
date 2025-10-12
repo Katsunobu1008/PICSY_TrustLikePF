@@ -1,23 +1,17 @@
 <!-- frontend-vue/src/views/HomeView.vue -->
+<!-- 役割: 投稿フォーム + タイムラインを同一ページに -->
 <template>
-  <div class="grid">
-    <section>
-      <ComposePost />
-    </section>
-    <section>
-      <PostTimeline /> <!-- ← ここを修正 -->
-    </section>
+  <div class="stack">
+    <ComposePost />
+    <PostTimeline />
   </div>
 </template>
 
 <script setup>
 import ComposePost from '../components/ComposePost.vue'
-import PostTimeline from '../components/PostTimeline.vue'  // ← ここを修正
+import PostTimeline from '../components/PostTimeline.vue'
 </script>
 
 <style scoped>
-.grid { display: grid; grid-template-columns: 380px 1fr; gap: 16px; }
-@media (max-width: 960px) {
-  .grid { grid-template-columns: 1fr; }
-}
+.stack{ display:flex; flex-direction:column; gap:16px; }
 </style>

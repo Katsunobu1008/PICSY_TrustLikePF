@@ -7,7 +7,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import api from '../lib/api'
 import PostCard from './PostCard.vue'
 import { bus } from '../stores/power'
@@ -18,9 +18,14 @@ async function refresh(){
   const { data } = await api.get('/api/posts/feed', { params: { size: 50 } })
   posts.value = data
 }
+function onRefresh(){ refresh() }
+
 onMounted(() => {
   refresh()
-  bus.on('timeline:refresh', refresh)
+  bus.on('timeline:refresh', onRefresh)
+})
+onBeforeUnmount(() => {
+  bus.off('timeline:refresh', onRefresh)
 })
 </script>
 

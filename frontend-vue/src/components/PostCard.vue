@@ -1,119 +1,112 @@
 <!-- frontend-vue/src/components/PostCard.vue -->
-<!-- 役割: 投稿カード。アクション可否取得→ いいね/引用ボタン -->
+<!-- 役割: 1件の投稿カード。アフォーダンスを見てボタン活性。Tx実行。 -->
 <template>
-  <article class="card">
-    <div class="row" style="justify-content:space-between">
-      <div>
-        <strong>{{ post.creatorId }}</strong>
-        <div class="muted" style="font-size:12px">{{ new Date(post.createdAt).toLocaleString() }}</div>
+  <div class="card">
+    <div class="head">
+      <div class="author">{{ short(post.creatorId) }}</div>
+      <div class="meta">
+        <span v-if="post.royaltyRate != null">ρ: {{ Number(post.royaltyRate).toFixed(2) }}</span>
+        <span class="muted">{{ new Date(post.createdAt).toLocaleString() }}</span>
       </div>
-      <div class="muted" v-if="loading">loading...</div>
     </div>
+    <div class="body">{{ post.contentText }}</div>
 
-    <p style="margin:12px 0 8px; white-space:pre-wrap;">{{ post.contentText }}</p>
-
-    <div class="row" style="gap:8px;flex-wrap:wrap">
-      <button class="btn"
-        :disabled="!actions.canLike || doing"
-        @click="doLike">
+    <div class="actions">
+      <button
+        :disabled="!afford.canLike || loading.like"
+        :title="afford.likeReason"
+        @click="like">
         👍 Like
       </button>
-      <span class="muted" v-if="!actions.canLike">({{ actions.likeReason }})</span>
-
-      <button class="btn"
-        :disabled="!actions.canQuote || doing"
-        @click="doQuote">
+      <button
+        :disabled="!afford.canQuote || loading.quote"
+        :title="afford.quoteReason"
+        @click="quote">
         🔁 Quote
       </button>
-      <span class="muted" v-if="!actions.canQuote">({{ actions.quoteReason }})</span>
     </div>
-  </article>
+  </div>
 </template>
 
 <script setup>
-import { reactive, ref, onMounted, watch } from 'vue'
-import { useActorStore } from '../stores/actor'
-import { bus } from '../stores/power'
+import { ref, onMounted, watch } from 'vue'
 import api from '../lib/api'
-import { newRequestId } from '../lib/uuid'
+import { getState, optimisticSpend, bus } from '../stores/power'
+import { v4 as uuidv4 } from 'uuid'
 
-const props = defineProps({ post: { type: Object, required: true } })
-const emit  = defineEmits(['need-refresh'])
+const props = defineProps({ post: { type:Object, required:true } })
+const emit = defineEmits(['need-refresh'])
 
-const actor = useActorStore()
-const actions = reactive({
-  canLike: false, likeReason: 'loading',
-  canQuote:false, quoteReason:'loading'
-})
-const loading = ref(false)
-const doing   = ref(false)
+const afford = ref({ canLike:false, likeReason:'', canQuote:false, quoteReason:'' })
+const loading = ref({ like:false, quote:false })
+const power = getState()
 
-async function fetchActions() {
-  if (!actor.actorId) return
-  loading.value = true
+function short(id){ return String(id).slice(0,8) }
+
+async function loadAffordance(){
+  if (!power.actor) { afford.value = { canLike:false, likeReason:'NO_ACTOR', canQuote:false, quoteReason:'NO_ACTOR' }; return }
   try {
-    // Affordance API（MVP標準）
-    const { data } = await api.get(`/api/affordance/actors/${actor.actorId}/posts/${props.post.postId}`)
-    actions.canLike = data.canLike
-    actions.likeReason = data.likeReason
-    actions.canQuote = data.canQuote
-    actions.quoteReason = data.quoteReason
-  } catch(e) {
-    actions.canLike = false; actions.likeReason  = e.code || 'ERROR'
-    actions.canQuote= false; actions.quoteReason = e.code || 'ERROR'
-  } finally {
-    loading.value = false
+    const { data } = await api.get(`/api/affordance/actors/${power.actor}/posts/${props.post.postId}`)
+    afford.value = data
+  } catch(e){
+    console.error('affordance failed', e)
+    afford.value = { canLike:false, likeReason:'ERR', canQuote:false, quoteReason:'ERR' }
   }
 }
 
-async function doLike(){
-  if (!actor.actorId) return
-  doing.value = true
+async function like(){
   try {
-    await api.post(`/api/posts/${props.post.postId}/like`, {
-      actorId: actor.actorId,
-      postId:  props.post.postId,
-      requestId: newRequestId()
-    })
-    // 取引成功 → Power 即時更新 & このカードの可否を再取得
-    bus.emit('tx:done')
-    await fetchActions()
-    emit('need-refresh') // 好みでタイムライン全体を軽く更新
-  } catch(e) {
-    // GlobalExceptionHandlerの code をそのまま表示するならアラートでもOK
-    alert(`${e.code || 'ERROR'}: ${e.message || ''}`)
+    loading.value.like = true
+    const body = { actorId: power.actor, postId: props.post.postId, requestId: uuidv4() }
+    await api.post(`/api/posts/${props.post.postId}/like`, body)
+    // αはサーバ側の値に依存するが、MVPでは0.05で楽観更新
+    optimisticSpend(0.05)
+    await loadAffordance()
+    emit('need-refresh')
+  } catch(e){
+    console.error('like failed', e)
+    alert('Like failed')
   } finally {
-    doing.value = false
+    loading.value.like = false
   }
 }
 
-// 引用は現行APIに合わせて 2ステップ: (1) create quote(無料) → (2) quote tx(β支払い)
-async function doQuote(){
-  if (!actor.actorId) return
-  doing.value = true
+async function quote(){
   try {
-    // 1) 引用投稿を作る（無料）
-    await api.post(`/api/posts/${props.post.postId}/quote`, {
-      actorId: actor.actorId, postId: props.post.postId, requestId: newRequestId()
-    })
-    // 2) β支払い（引用取引）
-    await api.post(`/api/posts/${props.post.postId}/quote/tx`, {
-      actorId: actor.actorId, postId: props.post.postId, requestId: newRequestId()
-    })
-    bus.emit('tx:done')
-    await fetchActions()
-    emit('need-refresh') // 新しい引用投稿を先頭に持ってくる
-  } catch(e) {
-    alert(`${e.code || 'ERROR'}: ${e.message || ''}`)
+    loading.value.quote = true
+    const reqId = uuidv4()
+    const body = { actorId: power.actor, postId: props.post.postId, requestId: reqId }
+
+    // 1) 引用投稿を新規作成（無料）
+    await api.post(`/api/posts/${props.post.postId}/quote`, body)
+
+    // 2) β 取引（MVP: default βを想定）
+    await api.post(`/api/posts/${props.post.postId}/quote/tx`, body)
+
+    // β=0.12の楽観更新
+    optimisticSpend(0.12)
+    await loadAffordance()
+    emit('need-refresh')
+  } catch(e){
+    console.error('quote failed', e)
+    alert('Quote failed')
   } finally {
-    doing.value = false
+    loading.value.quote = false
   }
 }
 
-onMounted(fetchActions)
-watch(() => actor.actorId, fetchActions)
+onMounted(loadAffordance)
+// 投稿やアクターが変わったときも更新
+watch(() => [power.actor, props.post.postId], loadAffordance)
 </script>
 
 <style scoped>
-.muted { color: var(--muted); }
+.card { border:1px solid var(--border); border-radius:8px; padding:10px; }
+.head { display:flex; align-items:center; justify-content:space-between; }
+.author{ font-weight:600; }
+.meta { display:flex; gap:8px; align-items:center; }
+.muted { color:var(--muted) }
+.body { margin:8px 0 12px; white-space:pre-wrap; }
+.actions { display:flex; gap:8px; }
+button[disabled]{ opacity:0.5; cursor:not-allowed; }
 </style>

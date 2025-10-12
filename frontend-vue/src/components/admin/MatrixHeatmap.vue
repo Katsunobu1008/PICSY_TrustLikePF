@@ -1,5 +1,5 @@
 <!-- frontend-vue/src/components/admin/MatrixHeatmap.vue -->
-<!-- 役割: 評価行列（アクティブ×アクティブ）ヒートマップ（APIが無い場合は案内表示） -->
+<!-- 役割: 評価行列（アクティブ×アクティブ）ヒートマップ -->
 <template>
   <div v-if="error" class="muted">Matrix API not available (optional). You can add:
     <code>GET /api/v1/dashboard/active-users</code> and
@@ -38,9 +38,8 @@ import api from '../../lib/api'
 const users = ref([]) // [{userId,name}]
 const rows  = ref([]) // [{evaluatorId,evaluateeId,value}]
 const error = ref(false)
+const map   = ref(new Map())
 
-// 値ルックアップを簡単にするため Map に
-const map = ref(new Map())
 function buildMap(){
   const m = new Map()
   rows.value.forEach(r => m.set(`${r.evaluatorId}|${r.evaluateeId}`, r.value))
@@ -48,7 +47,7 @@ function buildMap(){
 }
 function val(i,j){
   const v = map.value.get(`${i}|${j}`)
-  return v!=null ? v.toFixed(3) : '0.000'
+  return v!=null ? Number(v).toFixed(3) : '0.000'
 }
 function styleFor(i,j){
   const v = map.value.get(`${i}|${j}`) || 0
@@ -65,7 +64,7 @@ async function load(){
     rows.value = b.data.rows || []
     buildMap()
   } catch(err) {
-    console.debug('MatrixHeatmap load failed:', err) // ← これで参照される
+    console.error(err) // ← no-unused-vars 対策で使用
     error.value = true
   }
 }
