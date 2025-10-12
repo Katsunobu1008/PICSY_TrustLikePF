@@ -12,6 +12,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.picsy.trustlikepf.api.dto.AffordanceResponse;
 import com.picsy.trustlikepf.domain.service.AffordanceService;
 
+/**
+ * @deprecated Use GET /api/posts/{postId}/actions?actor=... instead.
+ */
+@Deprecated(since = "0.0.1", forRemoval = false)
 @RestController
 @RequestMapping("/api/affordance")
 public class AffordanceController {
