@@ -1,3 +1,4 @@
+// SettingRepository.java
 package com.picsy.trustlikepf.domain.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
