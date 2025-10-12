@@ -35,6 +35,12 @@ public class Post {
 
     @Column(name="created_at")
     private OffsetDateTime createdAt;
+    // Post.java にフィールドとgetterを追加（Flyway V1 に created_at は既に存在）
+@Column(name="created_at", nullable=false)
+private java.time.Instant createdAt;
+
+public java.time.Instant getCreatedAt(){ return createdAt; }
+
 
     protected Post(){}
 
