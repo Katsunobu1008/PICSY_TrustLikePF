@@ -1,3 +1,4 @@
+// Setting.java
 package com.picsy.trustlikepf.domain.entity;
 
 import java.time.Instant;
@@ -36,6 +37,5 @@ public class Setting {
     public String getKey() { return key; }
     public String getValue() { return value; }
     public Instant getUpdatedAt() { return updatedAt; }
-
     public void setValue(String value) { this.value = value; }
 }
