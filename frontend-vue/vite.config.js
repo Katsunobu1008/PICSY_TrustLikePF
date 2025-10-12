@@ -1,20 +1,18 @@
-import { fileURLToPath, URL } from 'node:url'
-
+// frontend-vue/vite.config.js
+/* vite.config.js */
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vueJsx from '@vitejs/plugin-vue-jsx'
-import vueDevTools from 'vite-plugin-vue-devtools'
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    vue(),
-    vueJsx(),
-    vueDevTools(),
-  ],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+  plugins: [vue()],
+  server: {
+    port: 5173,
+    proxy: {
+      // バックエンド Spring Boot (http://localhost:8080) へ
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
 })
