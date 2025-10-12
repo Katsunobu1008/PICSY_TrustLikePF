@@ -1,14 +1,19 @@
 // EvaluationMatrixRepository.java
 package com.picsy.trustlikepf.domain.repository;
 
-import com.picsy.trustlikepf.domain.entity.EvaluationMatrix;
-import com.picsy.trustlikepf.domain.entity.EvaluationMatrixId;
-import org.springframework.data.jpa.repository.*;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.picsy.trustlikepf.domain.entity.EvaluationMatrix;
+import com.picsy.trustlikepf.domain.entity.EvaluationMatrixId;
+
 import jakarta.persistence.LockModeType;
-import java.util.*;
 
 @Repository
 public interface EvaluationMatrixRepository extends JpaRepository<EvaluationMatrix, EvaluationMatrixId> {
