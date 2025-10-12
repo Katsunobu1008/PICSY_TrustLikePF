@@ -5,7 +5,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -17,13 +16,15 @@ import com.picsy.trustlikepf.domain.repository.EvaluationMatrixRepository;
 @Service
 public class EvaluationRowService {
 
-public static class Row {
-    private final UUID evaluator;
-    private final Map<UUID, EvaluationMatrix> cols = new HashMap<>();
-    Row(UUID evaluator){ this.evaluator = evaluator; }
-    public UUID evaluator(){ return evaluator; }
-    public Map<UUID, EvaluationMatrix> cols(){ return cols; } // ★アクセサ
-}
+    public static class Row {
+        private final UUID evaluator;
+        private final Map<UUID, EvaluationMatrix> cols = new HashMap<>();
+
+        Row(UUID evaluator){ this.evaluator = evaluator; }
+
+        public UUID evaluator(){ return evaluator; }
+        public Map<UUID, EvaluationMatrix> cols(){ return cols; } // ★ 統一アクセサ
+    }
 
     private final EvaluationMatrixRepository repo;
 
@@ -33,14 +34,11 @@ public static class Row {
 
     @Transactional
     public Row lockAndLoad(UUID evaluatorId, Collection<UUID> ensureCols) {
-        List<EvaluationMatrix> list = repo.lockRowByEvaluator(evaluatorId); // 行ロック
+        List<EvaluationMatrix> list = repo.lockRowByEvaluator(evaluatorId);
         var row = new Row(evaluatorId);
-        list.forEach(e -> row.cols.put(e.getId().getEvaluateeId(), e));
-        // 必要キーを存在化（0.0で）
+        list.forEach(e -> row.cols().put(e.getId().getEvaluateeId(), e));
         for (UUID colId : ensureCols) {
-            row.cols.computeIfAbsent(colId, cid -> repo.save(
-                    new EvaluationMatrix(evaluatorId, cid, 0.0)
-            ));
+            row.cols().computeIfAbsent(colId, cid -> repo.save(new EvaluationMatrix(evaluatorId, cid, 0.0)));
         }
         return row;
     }
@@ -54,37 +52,34 @@ public static class Row {
 
     static double round6(double x){ return Math.round(x * 1_000_000d)/1_000_000d; }
 
-    /** 自然回収の1行適用：非対角を(1-γ)倍、削った質量を対角へ戻す。最後に行和=1へ微調整。 */
-   @Transactional
+    /** 自然回収（前回あなたが入れたロジックのまま。offBeforeは未使用なので削除） */
+    @Transactional
     public void applyRecovery(UUID evaluatorId, double gamma){
         if (gamma <= 0 || gamma >= 1) return;
+        var row = lockAndLoad(evaluatorId, java.util.Set.of(evaluatorId));
 
-        var row = lockAndLoad(evaluatorId, Set.of(evaluatorId));
-
-        EvaluationMatrix diag = row.cols.get(evaluatorId);
+        var diag = row.cols().get(evaluatorId);
         if (diag == null) {
             diag = repo.save(new EvaluationMatrix(evaluatorId, evaluatorId, 0.0));
-            row.cols.put(evaluatorId, diag);
+            row.cols().put(evaluatorId, diag);
         }
-        double eii = diag.getValue();   // ★ ここで初期化
+        double eii = diag.getValue();
 
-        // 非対角を(1-γ)倍
-        for (var entry : row.cols.entrySet()){
-            UUID j = entry.getKey();
+        // 非対角 (1-γ) 倍
+        for (var entry : row.cols().entrySet()){
+            var j = entry.getKey();
             var em = entry.getValue();
             if (j.equals(evaluatorId)) continue;
-            double v = em.getValue();
-            double nv = round6(v * (1.0 - gamma));
-            em.setValue(nv);
+            em.setValue(round6(em.getValue() * (1.0 - gamma)));
         }
 
-        // 削った総量 γ*(1 - Eii) を対角へ戻す
+        // 削った総量 Δ = γ * (1 - Eii) を対角に戻す
         double delta = gamma * (1.0 - eii);
         diag.setValue(round6(eii + delta));
 
-        // 丸め誤差の微調整
+        // 行和=1へ微調整
         double sum = 0.0;
-        for (var em : row.cols.values()) sum += em.getValue();
+        for (var em : row.cols().values()) sum += em.getValue();
         double eps = round6(1.0 - sum);
         if (Math.abs(eps) > 1e-9) {
             diag.setValue(round6(diag.getValue() + eps));
