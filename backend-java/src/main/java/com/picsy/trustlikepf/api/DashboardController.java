@@ -6,6 +6,8 @@ import java.util.stream.Collectors;
 
 import org.springframework.web.bind.annotation.*;
 
+import com.picsy.trustlikepf.api.dto.ActiveUsersResponse;
+import com.picsy.trustlikepf.api.dto.EvalMatrixResponse;
 import com.picsy.trustlikepf.domain.entity.ContributionVector;
 import com.picsy.trustlikepf.domain.entity.EvaluationMatrix;
 import com.picsy.trustlikepf.domain.entity.User;
@@ -26,7 +28,7 @@ public class DashboardController {
         this.cRepo = cRepo; this.eRepo = eRepo; this.userRepo = userRepo;
     }
 
-    // 既存: 単ユーザーの核心指標
+    // 既存: 単ユーザーの核心指標（MapのままでOK）
     @GetMapping("/core-metrics/{userId}")
     public Map<String,Object> core(@PathVariable UUID userId){
         double c = cRepo.findById(userId).map(ContributionVector::getValue).orElse(1.0);
@@ -37,37 +39,30 @@ public class DashboardController {
         return Map.of("ok", true, "c", c, "Eii", eii, "purchasingPower", purchasing);
     }
 
-    // ✅ 追加: アクティブユーザー一覧（ダッシュボード/ヒートマップ用）
+    // ✅ 追加: アクティブユーザー一覧（DTOで返す）
     @GetMapping("/active-users")
-    public Map<String, Object> activeUsers(){
+    public ActiveUsersResponse activeUsers(){
         List<User> active = userRepo.findByIsActiveTrue();
-        List<Map<String,Object>> users = active.stream()
-                .map(u -> Map.of("userId", u.getUserId(), "name", u.getName()))
-                .collect(Collectors.toList());
-        return Map.of("ok", true, "users", users);
+        var users = active.stream()
+                .map(u -> new ActiveUsersResponse.UserItem(u.getUserId(), u.getName()))
+                .toList();
+        return new ActiveUsersResponse(true, users);
     }
 
-    // ✅ 追加: 評価行列（アクティブ×アクティブ）の（i,j,value）行データ
+    // ✅ 追加: 評価行列（アクティブ×アクティブ）（DTOで返す）
     @GetMapping("/eval-matrix")
-    public Map<String, Object> evalMatrixActiveOnly(){
-        // i(評価者)の候補
+    public EvalMatrixResponse evalMatrixActiveOnly(){
         List<User> active = userRepo.findByIsActiveTrue();
         Set<UUID> activeIds = active.stream().map(User::getUserId).collect(Collectors.toSet());
 
-        // i ごとに行を取り出し、j(被評価者)もアクティブだけ残す
-        List<Map<String,Object>> rows = new ArrayList<>();
+        var rows = new ArrayList<EvalMatrixResponse.Row>();
         for (User i : active) {
-            List<EvaluationMatrix> line = eRepo.findByEvaluator(i.getUserId());
-            for (var em : line) {
+            for (var em : eRepo.findByEvaluator(i.getUserId())) {
                 UUID j = em.getId().getEvaluateeId();
                 if (!activeIds.contains(j)) continue; // アクティブのみ
-                rows.add(Map.of(
-                        "evaluatorId", i.getUserId(),
-                        "evaluateeId", j,
-                        "value", em.getValue()
-                ));
+                rows.add(new EvalMatrixResponse.Row(i.getUserId(), j, em.getValue()));
             }
         }
-        return Map.of("ok", true, "rows", rows);
+        return new EvalMatrixResponse(true, rows);
     }
 }
