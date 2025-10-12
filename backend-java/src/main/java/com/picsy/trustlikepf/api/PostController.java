@@ -22,8 +22,11 @@ import com.picsy.trustlikepf.api.dto.PostActions;
 import com.picsy.trustlikepf.api.dto.PostReflective;
 import com.picsy.trustlikepf.api.dto.QuoteRequest;
 import com.picsy.trustlikepf.domain.entity.Post;
+import com.picsy.trustlikepf.domain.repository.ContributionVectorRepository;
 import com.picsy.trustlikepf.domain.repository.PostRepository;
+import com.picsy.trustlikepf.domain.repository.UserRepository;
 import com.picsy.trustlikepf.domain.service.ActionQueryService;
+import com.picsy.trustlikepf.domain.service.EvaluationRowService;
 import com.picsy.trustlikepf.domain.service.PostCommandService;
 import com.picsy.trustlikepf.domain.service.TransactionService;
 
@@ -35,6 +38,10 @@ public class PostController {
     private final TransactionService  tx;
     private final PostRepository      posts;
     private final ActionQueryService  actions;               // ★ 追加
+        // ★追加
+    private final EvaluationRowService eService;
+    private final ContributionVectorRepository cRepo;
+    private final UserRepository userRepo;
 
     public PostController(PostCommandService postCmd, TransactionService tx, PostRepository posts,
                           ActionQueryService actions) {
@@ -92,20 +99,35 @@ public class PostController {
         return ResponseEntity.ok(out);
     }
 
-    /** アクション可否 */
+ /** アクション可否（UIのボタン活性と理由表示に使用） */
     @GetMapping("/{postId}/actions")
-    public ResponseEntity<PostActions> getActions(@PathVariable UUID postId,
-                                                  @RequestParam("actor") UUID actor){
-        return actions.getActions(postId, actor)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
+    public ResponseEntity<PostActionsResponse> actions(@PathVariable UUID postId, @RequestParam("actor") UUID actor){
+        var post = posts.findById(postId).orElseThrow();
+        var actorUser = userRepo.findById(actor).orElseThrow();
+        var targetUser = userRepo.findById(post.getCreatorId()).orElseThrow();
 
-    @GetMapping("/{postId}")
-    public ResponseEntity<PostReflective> get(@PathVariable UUID postId){
-        return posts.findById(postId)
-                .map(PostReflective::from)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        // まず購買力
+        double c = cRepo.findById(actor).orElseThrow().getValue();
+        var row = eService.lockAndLoad(actor, java.util.Set.of(actor));
+        double Epp = row.cols().get(actor).getValue(); // Row#cols() は下で説明
+
+        boolean canLike = true; String likeReason = "OK";
+        if (!actorUser.isActive()) { canLike = false; likeReason = "ACCOUNT_FROZEN"; }
+        else if (!targetUser.isActive()) { canLike = false; likeReason = "TARGET_FROZEN"; }
+        else if (post.getCreatorId().equals(actor)) { canLike = false; likeReason = "SELF_LIKE_NOT_ALLOWED"; }
+        else if (Epp * c < 0.05 /* α */) { canLike = false; likeReason = "INSUFFICIENT_PURCHASING_POWER"; }
+
+        // 引用は actor が凍結でなければ基本OK（実際の quote() 内で最終チェック）
+        boolean canQuote = actorUser.isActive();
+        String quoteReason = canQuote ? "OK" : "ACCOUNT_FROZEN";
+
+        var out = new PostActionsResponse(
+                canLike, likeReason,
+                canQuote, quoteReason,
+                Epp, c, Epp*c,
+                0.05,           // α
+                0.12            // β default（必要なら設定値を注入）
+        );
+        return ResponseEntity.ok(out);
     }
 }
