@@ -10,3 +10,12 @@ const app = createApp(App)
 app.use(createPinia())
 app.use(router)
 app.mount('#app')
+// frontend-vue/src/main.js 末尾の初期化
+import { setActor, startPolling } from './stores/power'
+import { parseActorFromUrl, onUrlActorChange } from './stores/actor'
+
+const actor = parseActorFromUrl()
+setActor(actor)
+startPolling()
+
+onUrlActorChange((uuid) => setActor(uuid))
