@@ -1,70 +1,58 @@
 // frontend-vue/src/stores/power.js
-// 役割: アクター（?actor=UUID）を保持し、購買力をポーリング/更新するシンプルなストア。
+// 役割: アクター(?actor=UUID)を保持し、購買力(Eii*c)をポーリング更新するグローバルストア。
+//      Vueのリアクティブを使うことで、参照側は自動でUIが更新される。
 // 依存: src/lib/api.js
 
+import { reactive } from 'vue'
 import api from '../lib/api'
 
-// 超簡易イベントバス（mitt等の依存を増やさないMVP）
-export const bus = {
-  _h: {},
-  on(evt, fn) {
-    ;(this._h[evt] ||= []).push(fn)
-  },
-  off(evt, fn) {
-    this._h[evt] = (this._h[evt] || []).filter((f) => f !== fn)
-  },
-  emit(evt, ...args) {
-    ;(this._h[evt] || []).forEach((f) => f(...args))
-  },
-}
-
-const state = {
-  actor: null, // UUID
-  eii: 1,
-  c: 1,
-  purchasingPower: 1,
-  polling: null,
-}
+const state = reactive({
+  actor: null, // 選択アクターのUUID（URLクエリに同期する）
+  eii: 1.0, // 自己ループ（行自己）Eii
+  c: 1.0, // 貢献度 c
+  power: 1.0, // 購買力 = Eii * c
+  polling: null, // setInterval のハンドル
+})
 
 export function getState() {
   return state
 }
 
-export function setActor(uuid) {
-  state.actor = uuid || null
-  // actor 変更時に即時購買力フェッチ & TL更新合図
+export function setActor(actorId) {
+  state.actor = actorId || null
   if (state.actor) {
-    fetchPower().finally(() => bus.emit('timeline:refresh'))
+    refreshOnce()
+      // タイムラインを再取得したい場合は window イベントで十分（bus不要）
+      .finally(() => window.dispatchEvent(new CustomEvent('timeline:refresh')))
   }
 }
 
-export async function fetchPower() {
+// 交易直後など、UIを即時に気持ちよくするための楽観的消費（後でポーリングで正へ収束）
+export function optimisticSpend(cost) {
+  state.power = Math.max(0, state.power - Number(cost || 0))
+}
+
+export async function refreshOnce() {
   if (!state.actor) return
   try {
     const { data } = await api.get(`/api/users/${state.actor}/power`)
     state.eii = data.eii
     state.c = data.c
-    state.purchasingPower = data.purchasingPower
-    bus.emit('power:updated', { ...data })
+    state.power = data.purchasingPower
   } catch (e) {
-    console.error('fetchPower failed', e)
+    // 通信不調時はログに留め、UIは次回ポーリングに委ねる
+    console.warn('power refresh failed', e)
   }
 }
 
-// Tx直後などに一時的に“見かけ上”の購買力を減らしておく（楽観的UI）
-export function optimisticSpend(delta) {
-  state.purchasingPower = Math.max(0, state.purchasingPower - delta)
-}
-
-// ポーリング開始
 export function startPolling() {
+  stopPolling()
   const ms = Number(import.meta.env.VITE_POLL_MS || 30000)
-  if (state.polling) clearInterval(state.polling)
-  state.polling = setInterval(fetchPower, ms)
-  fetchPower()
+  state.polling = setInterval(refreshOnce, ms)
+  // すぐ1回
+  refreshOnce()
 }
 
-// ポーリング停止
 export function stopPolling() {
   if (state.polling) clearInterval(state.polling)
   state.polling = null
