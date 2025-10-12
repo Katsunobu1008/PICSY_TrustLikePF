@@ -24,6 +24,6 @@ public class RecoveryJob {
     public void run(){
         double gamma = settings.getGamma();
         if (gamma <= 0.0) return;
-        users.findAllActive().forEach(u -> eService.applyRecovery(u.getUserId(), gamma));
+        users.findByIsActiveTrue().forEach(u -> eService.applyRecovery(u.getUserId(), gamma));
     }
 }
