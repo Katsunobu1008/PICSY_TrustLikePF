@@ -39,33 +39,30 @@ public class PostController {
         this.posts = posts;
     }
 
-/** 原作の作成 */
-@PostMapping
-public ResponseEntity<PostReflective> createOriginal(@RequestBody CreatePostRequest req){
-    if (req.royaltyRate() == null) {
-        throw new IllegalArgumentException("royaltyRate required for original post");
+    /** 原作の作成 */
+    @PostMapping
+    public ResponseEntity<PostReflective> createOriginal(@RequestBody CreatePostRequest req){
+        if (req.royaltyRate() == null) {
+            throw new IllegalArgumentException("royaltyRate required for original post");
+        }
+        BigDecimal rr = BigDecimal.valueOf(req.royaltyRate());
+        Post p = postCmd.createOriginal(req.creatorId(), req.contentText(), rr);
+        return ResponseEntity.ok(PostReflective.from(p));
     }
-    BigDecimal rr = BigDecimal.valueOf(req.royaltyRate());
-    Post p = postCmd.createOriginal(req.creatorId(), req.contentText(), rr);
-    return ResponseEntity.ok(PostReflective.from(p));
-}
 
     /** 引用の作成（投稿データ自体を作る） */
     @PostMapping("/{postId}/quote")
     public ResponseEntity<PostReflective> createQuote(@PathVariable UUID postId,
                                                       @RequestBody QuoteRequest req){
-        // ここでは投稿（編集）オブジェクトを作る。トランザクション（β消費）は tx.quote で別途。
+        // β消費（取引ログ）は別エンドポイント /quote/tx で切る
         Post p = postCmd.createQuote(req.actorId(), postId, /* contentIfAny */ null);
-        // β消費の履歴（取引）を切りたい場合は tx.quote(req) をここで呼ぶ運用も可。
         return ResponseEntity.ok(PostReflective.from(p));
     }
 
     /** いいね（取引を切る） */
     @PostMapping("/{postId}/like")
     public ResponseEntity<Void> like(@PathVariable UUID postId, @RequestBody LikeRequest req){
-        if (!postId.equals(req.postId())) {
-            return ResponseEntity.badRequest().build();
-        }
+        if (!postId.equals(req.postId())) return ResponseEntity.badRequest().build();
         tx.like(req);
         return ResponseEntity.accepted().build();
     }
@@ -73,9 +70,7 @@ public ResponseEntity<PostReflective> createOriginal(@RequestBody CreatePostRequ
     /** 引用（取引を切る） */
     @PostMapping("/{postId}/quote/tx")
     public ResponseEntity<Void> quoteTx(@PathVariable UUID postId, @RequestBody QuoteRequest req){
-        if (!postId.equals(req.postId())) {
-            return ResponseEntity.badRequest().build();
-        }
+        if (!postId.equals(req.postId())) return ResponseEntity.badRequest().build();
         tx.quote(req);
         return ResponseEntity.accepted().build();
     }
