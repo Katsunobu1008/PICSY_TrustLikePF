@@ -2,7 +2,7 @@
 package com.picsy.trustlikepf.domain.entity;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -33,11 +33,10 @@ public class Post {
     @Column(name="royalty_rate", precision=5, scale=4)
     private BigDecimal royaltyRate;
 
-    // ★ created_at は OffsetDateTime に統一
     @Column(name="created_at", nullable=false)
-    private OffsetDateTime createdAt;
+    private Instant createdAt;
 
-    // ★ JPAのための no-arg。サービス層から new するので public にする（MVP）
+    // ★ JPA が必要とするデフォルトコンストラクタは public に
     public Post(){}
 
     // ---------- getters ----------
@@ -47,19 +46,19 @@ public class Post {
     public UUID getParentPostId(){ return parentPostId; }
     public UUID getOriginalPostId(){ return originalPostId; }
     public BigDecimal getRoyaltyRate(){ return royaltyRate; }
-    public OffsetDateTime getCreatedAt(){ return createdAt; }
+    public Instant getCreatedAt(){ return createdAt; }
 
-    // ---------- setters (MVP用) ----------
+    // ---------- setters ----------
     public void setPostId(UUID postId){ this.postId = postId; }
     public void setCreatorId(UUID creatorId){ this.creatorId = creatorId; }
     public void setContentText(String contentText){ this.contentText = contentText; }
     public void setParentPostId(UUID parentPostId){ this.parentPostId = parentPostId; }
     public void setOriginalPostId(UUID originalPostId){ this.originalPostId = originalPostId; }
     public void setRoyaltyRate(BigDecimal royaltyRate){ this.royaltyRate = royaltyRate; }
-    public void setCreatedAt(OffsetDateTime createdAt){ this.createdAt = createdAt; }
+    public void setCreatedAt(Instant createdAt){ this.createdAt = createdAt; }
 
     @PrePersist
     public void onCreate() {
-        if (createdAt == null) createdAt = OffsetDateTime.now();
+        if (createdAt == null) createdAt = Instant.now();
     }
 }
