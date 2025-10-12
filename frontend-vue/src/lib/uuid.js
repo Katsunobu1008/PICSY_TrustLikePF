@@ -1,7 +1,13 @@
 // frontend-vue/src/lib/uuid.js
-// 役割: requestId 生成ユーティリティ
-export function newRequestId() {
-  if (crypto?.randomUUID) return crypto.randomUUID()
-  // Fallback（ほぼ使われないはず）
-  return 'req-' + Math.random().toString(36).slice(2) + Date.now().toString(36)
+// 役割: 軽量なUUID v4。ブラウザの Web Crypto があればそれを使う。
+export function uuidv4() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  // fallback
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
 }
