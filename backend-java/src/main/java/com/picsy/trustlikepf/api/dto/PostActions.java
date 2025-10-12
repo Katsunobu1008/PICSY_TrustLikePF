@@ -1,6 +1,10 @@
 // backend-java/src/main/java/com/picsy/trustlikepf/api/dto/PostActions.java
 package com.picsy.trustlikepf.api.dto;
 
+/**
+ * @deprecated Use AffordanceResponse instead.
+ */
+@Deprecated(since = "0.0.1", forRemoval = false)
 public record PostActions(
         // like
         boolean likeEnabled,
