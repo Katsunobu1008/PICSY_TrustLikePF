@@ -17,11 +17,13 @@ import com.picsy.trustlikepf.domain.repository.EvaluationMatrixRepository;
 @Service
 public class EvaluationRowService {
 
-    public static class Row {
-        public final UUID evaluator;
-        public final Map<UUID, EvaluationMatrix> cols = new HashMap<>();
-        Row(UUID evaluator){ this.evaluator = evaluator; }
-    }
+public static class Row {
+    private final UUID evaluator;
+    private final Map<UUID, EvaluationMatrix> cols = new HashMap<>();
+    Row(UUID evaluator){ this.evaluator = evaluator; }
+    public UUID evaluator(){ return evaluator; }
+    public Map<UUID, EvaluationMatrix> cols(){ return cols; } // ★アクセサ
+}
 
     private final EvaluationMatrixRepository repo;
 
