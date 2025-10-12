@@ -53,32 +53,34 @@ public class EvaluationRowService {
     static double round6(double x){ return Math.round(x * 1_000_000d)/1_000_000d; }
 
     /** 自然回収の1行適用：非対角を(1-γ)倍、削った質量を対角へ戻す。最後に行和=1へ微調整。 */
-@Transactional
+   @Transactional
     public void applyRecovery(UUID evaluatorId, double gamma){
         if (gamma <= 0 || gamma >= 1) return;
 
         var row = lockAndLoad(evaluatorId, Set.of(evaluatorId));
 
-        double eii;
         EvaluationMatrix diag = row.cols.get(evaluatorId);
         if (diag == null) {
             diag = repo.save(new EvaluationMatrix(evaluatorId, evaluatorId, 0.0));
             row.cols.put(evaluatorId, diag);
         }
-        eii = diag.getValue();
+        double eii = diag.getValue();   // ★ ここで初期化
 
-        // 非対角を(1-γ)倍（未使用変数 offBefore を削除）
+        // 非対角を(1-γ)倍
         for (var entry : row.cols.entrySet()){
             UUID j = entry.getKey();
             var em = entry.getValue();
-            if (j.equals(evaluatorId)) continue; // 対角は後で調整
-            double nv = round6(em.getValue() * (1.0 - gamma));
+            if (j.equals(evaluatorId)) continue;
+            double v = em.getValue();
+            double nv = round6(v * (1.0 - gamma));
             em.setValue(nv);
         }
-// 対角を増加させる
+
+        // 削った総量 γ*(1 - Eii) を対角へ戻す
         double delta = gamma * (1.0 - eii);
         diag.setValue(round6(eii + delta));
-// 行和を1に微調整
+
+        // 丸め誤差の微調整
         double sum = 0.0;
         for (var em : row.cols.values()) sum += em.getValue();
         double eps = round6(1.0 - sum);
