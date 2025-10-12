@@ -33,16 +33,12 @@ public class Post {
     @Column(name="royalty_rate", precision=5, scale=4)
     private BigDecimal royaltyRate;
 
-    @Column(name="created_at")
+    // ★ created_at は OffsetDateTime に統一
+    @Column(name="created_at", nullable=false)
     private OffsetDateTime createdAt;
-    // Post.java にフィールドとgetterを追加（Flyway V1 に created_at は既に存在）
-@Column(name="created_at", nullable=false)
-private java.time.Instant createdAt;
 
-public java.time.Instant getCreatedAt(){ return createdAt; }
-
-
-    protected Post(){}
+    // ★ JPAのための no-arg。サービス層から new するので public にする（MVP）
+    public Post(){}
 
     // ---------- getters ----------
     public UUID getPostId(){ return postId; }
@@ -53,7 +49,7 @@ public java.time.Instant getCreatedAt(){ return createdAt; }
     public BigDecimal getRoyaltyRate(){ return royaltyRate; }
     public OffsetDateTime getCreatedAt(){ return createdAt; }
 
-    // ---------- setters (MVP用。将来はFactoryに寄せてもOK) ----------
+    // ---------- setters (MVP用) ----------
     public void setPostId(UUID postId){ this.postId = postId; }
     public void setCreatorId(UUID creatorId){ this.creatorId = creatorId; }
     public void setContentText(String contentText){ this.contentText = contentText; }
