@@ -1,10 +1,5 @@
-// EvaluationRowService.java
+// backend-java/src/main/java/com/picsy/trustlikepf/domain/service/EvaluationRowService.java
 package com.picsy.trustlikepf.domain.service;
-
-import com.picsy.trustlikepf.domain.entity.EvaluationMatrix;
-import com.picsy.trustlikepf.domain.repository.EvaluationMatrixRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -12,14 +7,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-class ERow {
-    final UUID evaluator;
-    final Map<UUID, EvaluationMatrix> cols = new HashMap<>();
-    ERow(UUID evaluator){ this.evaluator = evaluator; }
-}
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.picsy.trustlikepf.domain.entity.EvaluationMatrix;
+import com.picsy.trustlikepf.domain.repository.EvaluationMatrixRepository;
 
 @Service
 public class EvaluationRowService {
+    // ---- 公開ネスト型：公開APIに載せても警告にならない ----
+    public static final class Row {
+        public final UUID evaluator;
+        public final Map<UUID, EvaluationMatrix> cols = new HashMap<>();
+        public Row(UUID evaluator){ this.evaluator = evaluator; }
+    }
+
     private final EvaluationMatrixRepository repo;
 
     public EvaluationRowService(EvaluationMatrixRepository repo) {
@@ -27,11 +29,10 @@ public class EvaluationRowService {
     }
 
     @Transactional
-    public ERow lockAndLoad(UUID evaluatorId, Collection<UUID> ensureCols) {
+    public Row lockAndLoad(UUID evaluatorId, Collection<UUID> ensureCols) {
         List<EvaluationMatrix> list = repo.lockRowByEvaluator(evaluatorId); // 行ロック
-        var row = new ERow(evaluatorId);
+        var row = new Row(evaluatorId);
         list.forEach(e -> row.cols.put(e.getId().getEvaluateeId(), e));
-        // 必要キーを存在化（0.0で）
         for (UUID colId : ensureCols) {
             row.cols.computeIfAbsent(colId, cid -> repo.save(
                     new EvaluationMatrix(evaluatorId, cid, 0.0)
