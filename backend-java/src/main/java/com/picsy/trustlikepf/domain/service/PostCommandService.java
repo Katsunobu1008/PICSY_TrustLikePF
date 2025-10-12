@@ -1,13 +1,14 @@
-// PostCommandService.java
+// backend-java/src/main/java/com/picsy/trustlikepf/domain/service/PostCommandService.java
 package com.picsy.trustlikepf.domain.service;
-
-import com.picsy.trustlikepf.domain.entity.Post;
-import com.picsy.trustlikepf.domain.repository.PostRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.picsy.trustlikepf.domain.entity.Post;
+import com.picsy.trustlikepf.domain.repository.PostRepository;
 
 @Service
 public class PostCommandService {
@@ -17,9 +18,10 @@ public class PostCommandService {
 
     @Transactional
     public Post createOriginal(UUID creatorId, String content, BigDecimal royaltyRate){
+        if (royaltyRate == null) {
+            throw new IllegalArgumentException("royaltyRate required for original post");
+        }
         var p = new Post();
-        // setter を用意していない場合は JPA に合わせてコンストラクタ等を追加してください
-        // ここでは簡潔化: エンティティに setter を生やす運用を想定
         p.setPostId(UUID.randomUUID());
         p.setCreatorId(creatorId);
         p.setContentText(content);
@@ -34,12 +36,10 @@ public class PostCommandService {
         var p = new Post();
         p.setPostId(UUID.randomUUID());
         p.setCreatorId(actorId);
-        p.setContentText(contentIfAny);
+        p.setContentText(contentIfAny == null ? "" : contentIfAny);
         p.setParentPostId(target.getPostId());
-        // 原作の継承
         p.setOriginalPostId(target.getOriginalPostId());
-        // 版権率は編集では NULL （原作のみ設定）
-        p.setRoyaltyRate(null);
+        p.setRoyaltyRate(null); // 引用はロイヤリティ設定なし
         return postRepo.save(p);
     }
 }
