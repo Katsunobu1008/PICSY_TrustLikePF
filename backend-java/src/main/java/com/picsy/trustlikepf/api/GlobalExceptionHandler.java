@@ -1,3 +1,4 @@
+// GlobalExceptionHandler.java
 package com.picsy.trustlikepf.api;
 
 import org.springframework.http.HttpStatus;
@@ -8,7 +9,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    static record ErrorBody(String code, String message) {}
+    public static record ErrorBody(String code, String message) {} // ← public にする
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorBody> handleIllegalState(IllegalStateException ex){
