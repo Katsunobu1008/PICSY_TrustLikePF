@@ -53,41 +53,38 @@ public class EvaluationRowService {
     static double round6(double x){ return Math.round(x * 1_000_000d)/1_000_000d; }
 
     /** 自然回収の1行適用：非対角を(1-γ)倍、削った質量を対角へ戻す。最後に行和=1へ微調整。 */
-    @Transactional
+@Transactional
     public void applyRecovery(UUID evaluatorId, double gamma){
         if (gamma <= 0 || gamma >= 1) return;
 
-        // 行ロック＆ロード（対角を含め最低 evaluatorId は存在させる）
         var row = lockAndLoad(evaluatorId, Set.of(evaluatorId));
 
-        // 現状の対角・非対角の操作
-    double eii;EvaluationMatrix diag = row.cols.get(evaluatorId);
-    if (diag == null) {
-    diag = repo.save(new EvaluationMatrix(evaluatorId, evaluatorId, 0.0));
-    row.cols.put(evaluatorId, diag);
+        double eii;
+        EvaluationMatrix diag = row.cols.get(evaluatorId);
+        if (diag == null) {
+            diag = repo.save(new EvaluationMatrix(evaluatorId, evaluatorId, 0.0));
+            row.cols.put(evaluatorId, diag);
         }
-    eii = diag.getValue();
+        eii = diag.getValue();
 
-// 非対角を(1-γ)倍（offBefore撤去）
-for (var entry : row.cols.entrySet()){
-    UUID j = entry.getKey();
-    var em = entry.getValue();
-    if (j.equals(evaluatorId)) continue; // 対角は後で調整
-    double nv = round6(em.getValue() * (1.0 - gamma));
-    em.setValue(nv);
-}
-
-        // 削った総量 Δ = γ * (1 - Eii) を対角に戻す
+        // 非対角を(1-γ)倍（未使用変数 offBefore を削除）
+        for (var entry : row.cols.entrySet()){
+            UUID j = entry.getKey();
+            var em = entry.getValue();
+            if (j.equals(evaluatorId)) continue; // 対角は後で調整
+            double nv = round6(em.getValue() * (1.0 - gamma));
+            em.setValue(nv);
+        }
+// 対角を増加させる
         double delta = gamma * (1.0 - eii);
         diag.setValue(round6(eii + delta));
-
-        // 最後に丸め誤差で行和ズレが出たら対角に微調整
+// 行和を1に微調整
         double sum = 0.0;
         for (var em : row.cols.values()) sum += em.getValue();
         double eps = round6(1.0 - sum);
         if (Math.abs(eps) > 1e-9) {
             diag.setValue(round6(diag.getValue() + eps));
-            if (diag.getValue() < 0) diag.setValue(0.0); // まれな負値対策
+            if (diag.getValue() < 0) diag.setValue(0.0);
         }
     }
 }
