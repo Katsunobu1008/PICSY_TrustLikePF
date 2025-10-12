@@ -1,11 +1,17 @@
 // AdminController.java
 package com.picsy.trustlikepf.api;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.picsy.trustlikepf.domain.service.PicsyEngine;
 import com.picsy.trustlikepf.domain.service.RecoveryJob;
 import com.picsy.trustlikepf.domain.service.SettingsService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -21,24 +27,24 @@ public class AdminController {
     }
 
     @GetMapping("/settings/recovery-gamma")
-    public ResponseEntity<?> getGamma() {
-        return ResponseEntity.ok().body(new Gamma(settings.getGamma()));
+    public ResponseEntity<Gamma> getGamma() {
+        return ResponseEntity.ok(new Gamma(settings.getGamma())); // ← ok().body(...) でなく ok(...)
     }
 
     @PutMapping("/settings/recovery-gamma")
-    public ResponseEntity<?> setGamma(@RequestBody Gamma req) {
+    public ResponseEntity<Void> setGamma(@RequestBody Gamma req) {
         settings.setGamma(req.value());
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/recover")
-    public ResponseEntity<?> runRecoveryOnce() {
+    public ResponseEntity<Void> runRecoveryOnce() {
         recoveryJob.run();
         return ResponseEntity.accepted().build();
     }
 
     @PostMapping("/recalc-c")
-    public ResponseEntity<?> recalcC() {
+    public ResponseEntity<Void> recalcC() {
         engine.recalcC();
         return ResponseEntity.accepted().build();
     }
