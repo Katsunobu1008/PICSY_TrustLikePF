@@ -61,25 +61,21 @@ public class EvaluationRowService {
         var row = lockAndLoad(evaluatorId, Set.of(evaluatorId));
 
         // 現状の対角・非対角の操作
-        double eii = 0.0;
-        EvaluationMatrix diag = row.cols.get(evaluatorId);
-        if (diag == null) {
-            diag = repo.save(new EvaluationMatrix(evaluatorId, evaluatorId, 0.0));
-            row.cols.put(evaluatorId, diag);
+    double eii;EvaluationMatrix diag = row.cols.get(evaluatorId);
+    if (diag == null) {
+    diag = repo.save(new EvaluationMatrix(evaluatorId, evaluatorId, 0.0));
+    row.cols.put(evaluatorId, diag);
         }
-        eii = diag.getValue();
+    eii = diag.getValue();
 
-        // 非対角を(1-γ)倍
-        double offBefore = 0.0;
-        for (var entry : row.cols.entrySet()){
-            UUID j = entry.getKey();
-            var em = entry.getValue();
-            if (j.equals(evaluatorId)) continue; // 対角は後で調整
-            double v = em.getValue();
-            offBefore += v;
-            double nv = round6(v * (1.0 - gamma));
-            em.setValue(nv);
-        }
+// 非対角を(1-γ)倍（offBefore撤去）
+for (var entry : row.cols.entrySet()){
+    UUID j = entry.getKey();
+    var em = entry.getValue();
+    if (j.equals(evaluatorId)) continue; // 対角は後で調整
+    double nv = round6(em.getValue() * (1.0 - gamma));
+    em.setValue(nv);
+}
 
         // 削った総量 Δ = γ * (1 - Eii) を対角に戻す
         double delta = gamma * (1.0 - eii);
