@@ -1,4 +1,4 @@
-// AffordanceService.java
+// backend-java/src/main/java/com/picsy/trustlikepf/domain/service/AffordanceService.java
 package com.picsy.trustlikepf.domain.service;
 
 import java.util.Set;
@@ -36,21 +36,21 @@ public class AffordanceService {
     @Transactional(readOnly = true)
     public AffordanceResponse forActorAndPost(UUID actorId, UUID postId){
         var post = postRepo.findById(postId).orElseThrow();
-        var row = eService.lockAndLoad(actorId, Set.of(actorId)).cols;
+        var row  = eService.lockAndLoad(actorId, Set.of(actorId)).cols();
         double epp = row.get(actorId).getValue();
         double cp  = cRepo.findById(actorId).orElseThrow().getValue();
         double power = epp * cp;
 
-        // like
+        // like: 自己いいね禁止（自己リツイートOKだが「自分の投稿にいいね」は不可）
         boolean self = post.getCreatorId().equals(actorId);
         boolean canLike = !self && power >= alpha;
         String likeReason = canLike ? "OK" :
-                (self ? "SELF_LIKE_NOT_ALLOWED" : "INSUFFICIENT_POWER");
+                (self ? "SELF_LIKE_NOT_ALLOWED" : "INSUFFICIENT_PURCHASING_POWER");
 
-        // quote
+        // quote: 支払能力のみチェック（本人凍結チェックなどはトランザクション側で最終確認）
         double beta = defaultBeta;
         boolean canQuote = power >= beta;
-        String quoteReason = canQuote ? "OK" : "INSUFFICIENT_POWER";
+        String quoteReason = canQuote ? "OK" : "INSUFFICIENT_PURCHASING_POWER";
 
         return new AffordanceResponse(
                 canLike,  round6(power), round6(alpha), likeReason,
