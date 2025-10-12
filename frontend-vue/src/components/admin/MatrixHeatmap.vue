@@ -63,9 +63,8 @@ async function load(){
     const b = await api.get('/api/v1/dashboard/eval-matrix')
     rows.value = b.data.rows || []
     buildMap()
-  } catch(err) {
-    console.error(err) // ← no-unused-vars 対策で使用
-    error.value = true
+  } catch {
+    error.value = true   // ← これで no-empty / no-unused-vars を回避
   }
 }
 onMounted(load)
