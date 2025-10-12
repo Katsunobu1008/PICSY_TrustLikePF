@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.picsy.trustlikepf.domain.entity.ContributionVector;
 import com.picsy.trustlikepf.domain.entity.EvaluationMatrix;
-import com.picsy.trustlikepf.domain.entity.User;
 import com.picsy.trustlikepf.domain.repository.ContributionVectorRepository;
 import com.picsy.trustlikepf.domain.repository.EvaluationMatrixRepository;
 import com.picsy.trustlikepf.domain.repository.UserRepository;
@@ -30,11 +29,11 @@ public class PicsyEngine {
         this.userRepo = userRepo;
     }
 
-    @Scheduled(fixedDelayString = "${picsy.engine.interval.ms:300000}")
+@Scheduled(fixedDelayString = "${picsy.engine.interval.ms:300000}")
 @Transactional
 public void recalcC(){
-    // ★ アクティブメンバーだけを母集団に
-    List<UUID> users = userRepo.findAllActive().stream().map(User::getUserId).toList();
+    var activeUsers = userRepo.findByIsActiveTrue(); // ★アクティブのみ
+    List<UUID> users = activeUsers.stream().map(com.picsy.trustlikepf.domain.entity.User::getUserId).toList();
     int N = users.size();
     if (N == 0) return;
 
