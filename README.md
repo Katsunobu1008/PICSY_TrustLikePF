@@ -1,7 +1,7 @@
 # PICSY_TrustLikePF — README
 
-> **情報金融（Information Finance）**の創出  
-> 情報の拡散（Amplification）と価値（Value）を同一の計測系に落とし込み、**貢献と創造性が正当に報われる**エコシステムを設計する。
+## **情報金融（Information Finance）**の創出  
+情報の拡散（Amplification）と価値（Value）を同一の計測系に落とし込み、**貢献と創造性が正当に報われる**エコシステムを設計する。
 
 ---
 
@@ -199,3 +199,30 @@ function powerIterationLeft(E):
      v_next := normalize_to_sum1(v_next)
   until ||v_next - v||_1 < tol
   return v_next * N
+
+```
+### 6.2 Like（いいね）｜PICSYでは取引に該当する
+```pseudo
+alpha := delta / c[buyer]
+assert E[buyer][buyer] >= alpha
+E[buyer][buyer] -= alpha
+E[buyer][seller] += alpha
+c := powerIterationLeft(E)
+```
+### 6.3 自然回収
+```pseudo
+for i != j: E[i][j] *= (1 - gamma)
+E[i][i] = E[i][i] + gamma * (1 - E[i][i])
+c := powerIterationLeft(E)
+```
+
+### 6.4 メンバーの追加
+```pseudo
+x := 1/N
+for i != j <= N: E'[i][j] = (1 - x) * E[i][j]
+E'[i][N+1] = x * (1 - E[i][i])
+E'[N+1][j] = c[j] / N
+E'[N+1][N+1] = 0
+c' = [c, 1]   // 証明により、これが E' の左固有ベクトル
+
+```
