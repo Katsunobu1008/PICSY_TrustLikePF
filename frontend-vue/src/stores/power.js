@@ -35,7 +35,7 @@ export function optimisticSpend(cost) {
 export async function refreshOnce() {
   if (!state.actor) return
   try {
-    const { data } = await api.get(`/api/users/${state.actor}/power`)
+    const { data } = await api.get(`/users/${state.actor}/power`)
     state.eii = data.eii
     state.c = data.c
     state.power = data.purchasingPower

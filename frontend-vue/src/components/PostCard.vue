@@ -41,34 +41,28 @@ const afford = ref({ canLike:false, likeReason:'', canQuote:false, quoteReason:'
 const loading = ref({ like:false, quote:false })
 const power = getState()
 
-function short(id){ return String(id).slice(0,8) }
-
 async function loadAffordance(){
-  if (!power.actor) { afford.value = { canLike:false, likeReason:'NO_ACTOR', canQuote:false, quoteReason:'NO_ACTOR' }; return }
-  try {
-    const { data } = await api.get(`/api/affordance/actors/${power.actor}/posts/${props.post.postId}`)
-    afford.value = data
-  } catch(e){
-    console.error('affordance failed', e)
-    afford.value = { canLike:false, likeReason:'ERR', canQuote:false, quoteReason:'ERR' }
+  if (!power.actor) {
+    afford.value = { canLike:false, likeReason:'NO_ACTOR', canQuote:false, quoteReason:'NO_ACTOR' }
+    return
   }
+  // ✅ 新パスに寄せる：/posts/{id}/actions?actor=...
+  const { data } = await api.get(`/posts/${props.post.postId}/actions`, {
+    params: { actor: power.actor }
+  })
+  afford.value = data
 }
 
 async function like(){
   try {
     loading.value.like = true
     const body = { actorId: power.actor, postId: props.post.postId, requestId: uuidv4() }
-    await api.post(`/api/posts/${props.post.postId}/like`, body)
-    // αはサーバ側の値に依存するが、MVPでは0.05で楽観更新
+    // ✅ /api を付けない
+    await api.post(`/posts/${props.post.postId}/like`, body)
     optimisticSpend(0.05)
     await loadAffordance()
     emit('need-refresh')
-  } catch(e){
-    console.error('like failed', e)
-    alert('Like failed')
-  } finally {
-    loading.value.like = false
-  }
+  } finally { loading.value.like = false }
 }
 
 async function quote(){
@@ -78,10 +72,10 @@ async function quote(){
     const body = { actorId: power.actor, postId: props.post.postId, requestId: reqId }
 
     // 1) 引用投稿を新規作成（無料）
-    await api.post(`/api/posts/${props.post.postId}/quote`, body)
+    await api.post(`/posts/${props.post.postId}/quote`, body)
 
     // 2) β 取引（MVP: default βを想定）
-    await api.post(`/api/posts/${props.post.postId}/quote/tx`, body)
+    await api.post(`/posts/${props.post.postId}/quote/tx`, body)
 
     // β=0.12の楽観更新
     optimisticSpend(0.12)

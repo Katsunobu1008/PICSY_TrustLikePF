@@ -58,9 +58,9 @@ function short(id){ return String(id).slice(0,8) }
 
 async function load(){
   try {
-    const a = await api.get('/api/v1/dashboard/active-users')
+    const a = await api.get('/v1/dashboard/active-users')
     users.value = a.data.users || []
-    const b = await api.get('/api/v1/dashboard/eval-matrix')
+    const b = await api.get('/v1/dashboard/eval-matrix')
     rows.value = b.data.rows || []
     buildMap()
   } catch {

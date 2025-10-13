@@ -2,23 +2,27 @@
 # --- build UI (frontend-vue) ---
 FROM node:20-alpine AS ui
 WORKDIR /ui
+# lock 不整合の影響を避けるため、ci が失敗したら install にフォールバック
 COPY frontend-vue/package*.json ./
-RUN npm ci
+RUN npm ci || npm install
 COPY frontend-vue/ ./
-RUN npm run build      # → /ui/dist
+# プロダクション向け API ベースは /api（BFF 経由）
+# .env.production があればそれが使われます。無い場合でも VITE_API_BASE=/api 既定でOK。
+RUN npm run build   # → /ui/dist
 
 # --- build BFF (server-node) ---
 FROM node:20-alpine AS bff
 WORKDIR /app
 ENV NODE_ENV=production
+
 COPY server-node/package*.json ./
-RUN npm ci --omit=dev
+# lock を同期済みなので本来は ci がGood。万一のため install にしておくと現場で安定。
+RUN npm install --omit=dev
 COPY server-node/src ./src
 
-# ビルド成果物をBFFの公開ディレクトリへ
+# UI の成果物を BFF の公開フォルダへ配置
 COPY --from=ui /ui/dist ./public
 
-# BFF が /api を backend にプロキシ、/ は ./public/index.html を返す想定
 EXPOSE 3000
-ENV BACKEND_API_URL=http://backend:8080
+# compose から BACKEND_API_URL=http://backend:8080 を注入します
 CMD ["node", "src/server.js"]

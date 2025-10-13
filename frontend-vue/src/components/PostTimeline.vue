@@ -14,7 +14,7 @@ import PostCard from './PostCard.vue'
 const posts = ref([])
 
 async function refresh(){
-  const { data } = await api.get('/api/posts/feed', { params: { size: 50 } })
+ const { data } = await api.get('/posts/feed', { params: { size: 50 } })
   posts.value = data
 }
 

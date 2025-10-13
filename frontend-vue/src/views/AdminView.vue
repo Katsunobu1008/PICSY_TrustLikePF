@@ -40,13 +40,13 @@ const users = ref([])
 
 async function load(){
   try {
-    const g = await api.get('/api/admin/settings/recovery-gamma')
+    const g = await api.get('/admin/settings/recovery-gamma')
     gamma.value = g.data.value
   } catch {            // 変数未使用で no-unused-vars を回避
     console.debug('recovery-gamma fetch skipped')
   }
   try {
-    const a = await api.get('/api/v1/dashboard/active-users')
+    const a = await api.get('/v1/dashboard/active-users')
     users.value = a.data.users || []
   } catch {
     console.debug('active-users fetch skipped')
@@ -54,15 +54,15 @@ async function load(){
 }
 
 async function saveGamma(){
-  await api.put('/api/admin/settings/recovery-gamma', { value: Number(gamma.value) })
+  await api.put('/admin/settings/recovery-gamma', { value: Number(gamma.value) })
   alert('Saved')
 }
 async function runRecovery(){
-  await api.post('/api/admin/recover')
+  await api.post('/admin/recover')
   alert('Started')
 }
 async function recalcC(){
-  await api.post('/api/admin/recalc-c')
+  await api.post('/admin/recalc-c')
   alert('Started')
 }
 

@@ -15,8 +15,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import api from '../lib/api'
-import { getState } from '../stores/power'
-import { bus } from '../stores/power'
+import { getState } from '../stores/power'  // ← bus は使わない（window イベントに統一）
 
 const power = getState()
 const actor = computed(() => power.actor)
@@ -24,7 +23,10 @@ const actor = computed(() => power.actor)
 const content = ref('')
 const royalty = ref(0.7)
 
-const canSubmit = computed(() => actor.value && content.value.trim().length>0 && royalty.value>=0 && royalty.value<=1)
+const canSubmit = computed(() =>
+  actor.value && content.value.trim().length > 0 &&
+  royalty.value >= 0 && royalty.value <= 1
+)
 
 function short(id){ return String(id||'').slice(0,8) }
 
@@ -38,9 +40,10 @@ async function submit(){
       parentPostId: null,
       mediaKeys: []
     }
-    await api.post('/api/posts', body)
+    await api.post('/posts', body)
     content.value = ''
-    bus.emit('timeline:refresh')
+    // タイムライン更新（window カスタムイベント）
+    window.dispatchEvent(new CustomEvent('timeline:refresh'))
   } catch(e){
     console.error('create post failed', e)
     alert('Post failed')

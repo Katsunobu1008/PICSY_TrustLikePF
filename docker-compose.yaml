@@ -2,21 +2,18 @@ services:
   db:
     image: postgres:15
     environment:
-      POSTGRES_DB: picsy_pf
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      TZ: Asia/Tokyo
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d picsy_pf -U user"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    restart: unless-stopped
+      - POSTGRES_DB=picsy_pf
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    ports: ["5432:5432"]
+    volumes: [postgres-data:/var/lib/postgresql/data]
     networks: [picsy-net]
+    healthcheck:
+      # DB の起動完了を厳密に判定
+      test: ["CMD-SHELL", "pg_isready -U user -d picsy_pf -h localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   backend:
     build:
@@ -24,35 +21,39 @@ services:
       dockerfile: Dockerfile
     depends_on:
       db:
-        condition: service_healthy            # ★ DBがREADYになってから起動
+        condition: service_healthy
     environment:
-      SPRING_PROFILES_ACTIVE: prod            # ★ プロファイル固定
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/picsy_pf
-      SPRING_DATASOURCE_USERNAME: user
-      SPRING_DATASOURCE_PASSWORD: password
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
-      SPRING_JPA_HIBERNATE_DDL_AUTO: none     # ★ スキーマはFlywayに委譲
-      SPRING_FLYWAY_ENABLED: "true"
-      TZ: Asia/Tokyo
-    ports:
-      - "8081:8080"                           # ホスト 8081 → backend:8080
-    restart: unless-stopped
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/picsy_pf
+      - SPRING_DATASOURCE_USERNAME=user
+      - SPRING_DATASOURCE_PASSWORD=password
+      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=none
+      - SPRING_FLYWAY_ENABLED=true
+      - SPRING_JPA_PROPERTIES_HIBERNATE_TYPE_PREFERRED_JSON_SQL_TYPE=JSONB
+    ports: ["8081:8080"]
     networks: [picsy-net]
+    healthcheck:
+      # Actuator なしでも既存 API でヘルス判定できる
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/api/posts/feed || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 60s   # ← 初回の Flyway 適用/初期化時間を吸収
 
+# docker-compose.yaml （web セクションだけ抜粋/修正）
   web:
     build:
-      context: ./server-node
-      dockerfile: Dockerfile
+      context: .                         # ← ルートに変更（重要）
+      dockerfile: server-node/Dockerfile # ← server-node 下の Dockerfile を指す
     environment:
-      BACKEND_API_URL: http://backend:8080    # Node→Springの内部URL
-      TZ: Asia/Tokyo
-    ports:
-      - "8080:3000"                           # ホスト 8080 → Node:3000
+      - BACKEND_API_URL=http://backend:8080
+    ports: ["8080:3000"]
     depends_on:
       backend:
-        condition: service_started            # (proxyなので健康判定は簡素でOK)
-    restart: unless-stopped
+        condition: service_healthy
     networks: [picsy-net]
+
 
 volumes:
   postgres-data:
