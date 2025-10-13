@@ -1,70 +1,201 @@
 # PICSY_TrustLikePF — README
 
-> 情報金融という新分野の開拓：  
-> 「いいね」を**有限の投資行為**に還元し、**伝播する価値**と**評者の重み**を統合した  
-> **コントリビューション・エコノミー**の実装指針
+> **情報金融（Information Finance）**の創出  
+> 情報の拡散（Amplification）と価値（Value）を同一の計測系に落とし込み、**貢献と創造性が正当に報われる**エコシステムを設計する。
 
 ---
 
-## 0. 概要 / Abstract
+## 0. 概要（Abstract）
 
-現代のSNSは「情報の拡散（Amplification）」と「情報の価値（Value）」が分離しており、総可処分時間の獲得競争が「アテンション・エコノミー」を過熱させています。本プロジェクト **PICSY_TrustLikePF** は、投稿プラットフォームに **PICSY 数学モデル（仮想中央銀行法）** を組み込み、**有限の「いいね」**を通じて価値が移転し、かつ **評者（キュレーター）の重み**が価値形成に反映され続ける仕組みを考えました。
+現行のSNSは、拡散（リーチ）と価値（貢献）が分離しており、**アテンション・エコノミー**の下で扇動的・低品質の情報が過剰に増幅されやすい。  
+**PICSY_TrustLikePF** は、有限・コスト付きの「いいね」を伝播投資貨幣 **PICSY** として再定義し、**仮想中央銀行法**にもとづく行列モデルで**貢献度（contribution）**を時々刻々に再評価する。
 
-- **有限の通貨としての「いいね」**：1いいね=δ（既定0.05 PICSY）。買い手の重み \(c_b\) と連動し、必要コストは \(\alpha = \delta / c_b\)。
-- **価値の伝播とキュレーション資本**：評価の質が高い評者ほど低コストで強い影響を与えられ、後続の価値増分から**還流**を受ける（後述の κ 設計）。
-- **クリエイター印税率（ρ\_s）**：二次引用・再投稿・派生作品に対し、原作者へ持続的に配当。
-- **アーキテクチャ**：**モジュラーモノリス**（将来の分割を前提にドメインごとに内部分割）。BFFパターンでフロント・API を疎結合化しました。
+- 「いいね」は**無限の賛意**ではなく、**希少でコストのある投資行為**である（1 like = δ PICSY）。
+- 各ユーザーの可用「いいね」能力は、**購買力** \( \mathrm{PP}_i = E_{ii} \cdot c_i \) により制約される。
+- 価値はネットワーク上を**伝播**し、**目利き（curation）**そのものが価値を持つ **キュレーション資本** を生む。
+- クリエイターは**原作印税率** \( \rho_s \) を設定し、引用先で生じた価値の一部を持続的に還流できる（拡張仕様）。
 
----
-
-## 1. 数学的仕様（PICSYコア）
-
-### 1.1 記法と公理
-- 評価行列：\(E \in \mathbb{R}_{\ge0}^{N\times N}\)。各行 \(i\) の和は 1（行確率）。対角 \(E_{ii}\) は**予算**。
-- 実効行列（仮想中央銀行法）：
-  \[
-  E' = E - B + \frac{1}{N-1}BD,\quad B=\mathrm{diag}(E_{11},\dots,E_{NN}),\quad D=J-I
-  \]
-  自己ループを除去し、その分を**他者へ均等再配布**。
-- 貢献度（左固有ベクトル）：\(\boldsymbol{c}E'=\boldsymbol{c},\ \sum_i c_i = N\)（ペロン–フロベニウスにより非負で一意）。
-- 取引（いいね）：
-  \[
-  \delta = \alpha\, c_b \quad \Rightarrow \quad \alpha = \frac{\delta}{c_b},\qquad
-  E_{bb}\!\leftarrow E_{bb}-\alpha,\ E_{bs}\!\leftarrow E_{bs}+\alpha
-  \]
-- 自然回収（回復率 \(\gamma\)）：
-  \[
-  E_{ij}\!\leftarrow(1-\gamma)E_{ij}\ (i\neq j),\quad E_{ii}\!\leftarrow E_{ii}+\gamma(1-E_{ii})
-  \]
-  使い切った予算が徐々に回復し、**新規参入者**が活動再開可能に。
-- メンバー追加（予算・貢献度不変）：
-  \[
-  x=\frac{1}{N},\ 
-  \tilde{E}_{ij}=(1-x)E_{ij}\ (i\ne j\le N),\ 
-  \tilde{E}_{i,N+1}=x(1-E_{ii}),\
-  \tilde{E}_{N+1,j}=\frac{c_j}{N},\ 
-  \tilde{E}_{N+1,N+1}=0
-  \]
-  すると \(\tilde{\boldsymbol{c}}=(c_1,\dots,c_N,1)\) が \(\tilde{E}'\) の固有ベクトルとなる。
-
-### 1.2 派生概念
-- **購買力**：\(\mathrm{PP}_i = E_{ii}\, c_i\)（**使える圧力**の直感値）
-- **キュレーション還流（κ）**（提案仕様）：
-  - 投稿 \(s\) の時間 \(t\) における価値増分 \(\Delta c_s(t)\) のうち、係数 \(0\!\le\!\kappa\!\le\!1\) を評者へ配当。
-  - 配分重みは、過去の取引 \((b\to s)\) における \(w_{b\to s}\propto \alpha_b\,c_b\) など（正規化して和1）。
-  - **簡易式**：評者 \(b\) への配当 \(\mathrm{rebate}_b(t) = \kappa\, w_{b\to s}\, \Delta c_s(t)\)。
-  - 実装は**イベント駆動**で、評価イベント到着時に最新 \(\boldsymbol{c}\) と紐づけて反映。
-
-- **原作印税率（ρ\_s）**（再投稿・派生）：派生投稿 \(d\) が価値獲得時、\(\rho_s\) を原作者 \(s\) に回す。  
-  例：引用が受けた \(\delta_d\) の定価増分から \(\rho_s \delta_d\) を \(s\) にブリッジ（イベント・ルーティングで再帰的に可）。
+本リポジトリは、上記の思想を**モジュラーモノリス**として実装するための**プロトタイピングの土台**（計算エンジン・API方針・UI指針・数理仕様）をまとめる。
 
 ---
 
-## 2. アーキテクチャ指針
+## 1. 数学的基礎（Mathematical Foundations）
 
-### 2.1 モジュラーモノリス（内部分割）
-- **ドメイン分割**：`UserService`, `ContentService`, `PicsyEngine`, `Curation/LicenseService` など**明確な境界**でパッケージ分割。
-- **一貫性優先**：単一DB（PostgreSQL）で価値移転の**原子性**を保証。MVP段階では結果整合性より信頼性。
-- **将来の分離**：ボトルネック（例：`PicsyEngine`の固有ベクトル計算）を**独立サービス**へ切り出し可能。
+### 1.1 評価行列と予算
 
-### 2.2 BFF（Backend For Frontend）
+- **評価行列** \( E \in \mathbb{R}_{\ge 0}^{N \times N} \)  
+  各行は**行確率**：\( \sum_j E_{ij} = 1 \)。  
+  \( E_{ii} \) はユーザー \( i \) の **予算（自己評価）**。
+- **貢献度ベクトル** \( \boldsymbol{c} \in \mathbb{R}_{\ge 0}^{1 \times N} \) は、合計が人数 \(N\) になるように正規化する：
+  \[
+    \sum_{i=1}^N c_i = N.
+  \]
+
+### 1.2 仮想中央銀行法（自己ループの除去と均等化）
+
+自己ループ（予算）をいったん外し、**自分以外**の \(N-1\) 人へ均等再配布した実効行列 \(E'\) を用いて貢献度を定義する。
+
+\[
+  E' \;=\; E \;-\; B \;+\; \frac{1}{N-1}\,BD,\quad
+  B=\mathrm{diag}(E_{11},\dots,E_{NN}),\ \ D=J-I.
+\]
+
+貢献度は **左固有ベクトル**（ペロン–フロベニウス）として与える：
+\[
+  \boldsymbol{c} E' = \boldsymbol{c}, \qquad \sum_i c_i = N.
+\]
+
+> 直感：自己ループを取り除き、予算分を周囲へ最低限度の「社会的ベースライン」として配ることで、価格式（下記）が**線形で透明**になる。
+
+### 1.3 取引（いいね）と定価
+
+買い手 \(b\) が売り手 \(s\) に「いいね」＝価値 \( \delta \) を与えるとき、**実コスト**（予算から減る量） \( \alpha \) は：
+\[
+  \boxed{\ \delta = \alpha \, c_b \ \Rightarrow\ \alpha = \frac{\delta}{c_b}\ }
+\]
+更新は買い手行の2項目のみ：
+\[
+  E_{bb} \leftarrow E_{bb} - \alpha,\qquad E_{bs} \leftarrow E_{bs} + \alpha.
+\]
+
+> **購買力**： \( \mathrm{PP}_i = E_{ii} \cdot c_i \)。同じ \( \delta \) を与えるとき、**重い人のいいねほど安い**（\( \alpha = \delta/c_b \) が小さい）。
+
+### 1.4 自然回収（枯渇防止・立ち上げ）
+
+回復率 \( \gamma \in (0,1) \) に対し、
+\[
+  E_{ij} \leftarrow (1-\gamma) E_{ij}\ (i\neq j),\quad
+  E_{ii} \leftarrow E_{ii} + \gamma (1 - E_{ii}).
+\]
+使い切った人ほど早く回復し、新規参加者（初期 \(E_{ii}=0\)）も**自然に立ち上がる**。
+
+### 1.5 メンバー追加（既存の貢献度・予算を不変）
+
+人数 \(N\) に新規 \(N\!+\!1\) を追加するとき、以下で **既存 \(c\) と予算を不変**に保てる。  
+\[
+  x = \frac{1}{N},\quad
+  \tilde{E}_{ij}=(1-x)E_{ij}\ (i\ne j\le N),\ \tilde{E}_{ii}=E_{ii},
+\]
+\[
+  \tilde{E}_{i,N+1}=x(1-E_{ii}),\quad
+  \tilde{E}_{N+1,j}=\frac{c_j}{N},\quad
+  \tilde{E}_{N+1,N+1}=0.
+\]
+このとき \( \tilde{\boldsymbol{c}}=(c_1,\dots,c_N,1) \) が \((N+1)\) 人系の左固有ベクトルとなる（証明済）。
+
+---
+
+## 2. ミニ例（3人）
+
+初期：
+\[
+  E=\begin{pmatrix}
+  0.2 & 0.4 & 0.4\\
+  0.4 & 0.2 & 0.4\\
+  0.4 & 0.4 & 0.2
+  \end{pmatrix},\quad
+  B=\mathrm{diag}(0.2,0.2,0.2),\quad
+  D=\begin{pmatrix}0&1&1\\1&0&1\\1&1&0\end{pmatrix}.
+\]
+\[
+  E' = E-B+\tfrac{1}{2}BD
+     = \begin{pmatrix}0&0.5&0.5\\0.5&0&0.5\\0.5&0.5&0\end{pmatrix}.
+\]
+\[
+  \boldsymbol{c}=(1,1,1),\quad \mathrm{PP}= (0.2,0.2,0.2).
+\]
+
+B→A へ「1いいね＝δ=0.05」：
+\[
+  \alpha = \frac{0.05}{c_B} = 0.05.
+\]
+\[
+  E_{BB}:0.2\to 0.15,\ \ E_{BA}:0.4\to 0.45.
+\]
+再計算後の貢献度はわずかに
+\[
+  \boldsymbol{c}\approx (1.0167,\ 1.0000,\ 0.9833)
+\]
+（Aが微増、第三者にも**伝播**が及ぶ）。購買力は \( \mathrm{PP}_B=0.15 \) に低下。  
+自然回収（例：\( \gamma=0.1\)）で対角が回復、次の行動余力が戻る。
+
+---
+
+## 3. アーキテクチャ（Modular Monolith with BFF）
+
+**モジュラーモノリス**を採用し、将来のサービス分割を前提に**ドメインごとに厳密に分割**する。
+
+[Browser: Vue.js]
+│
+│ (HTML/CSS/JS, fetch /api/*)
+▼
+[Web Server (BFF): Node.js/Express]
+│ (forwards)
+▼
+[API Server (Java/Spring Boot: PICSY Core)]
+│ (JPA, Tx, validation)
+▼
+[DB: PostgreSQL]
+
+
+### 採択理由
+- **開発速度 vs 分散の複雑性**：初期は**単一デプロイ**でMVPを創ることを優先していました。しかし制作過程の価値検証に不要な複雑性が増えてしまう部分があることは意識していました。
+- **発展可能性**：モジュール境界（`UserService`, `ContentService`, `PicsyEngine`）を厳密化し、計算負荷が高まったモジュールだけを**後から**独立サービス化できる点や、情報を投稿する機能やSNSの機能については、今後切り分けたいと考えていたためモノリスでもなければ、マイクロサービスアーキテクチャでもない、その間くらいのモジュラーモノリスとしてアーキテクチャを採用しました。
+- **一貫性**：価初期は単一のPostgreSQLで**強い一貫性**を担保しました。具体的には、ビヨンドソフトウェアアーキテクチャという書籍を読みながら考えました。
+
+### 技術選定
+| 領域 | 技術 | 理由 |
+|---|---|---|
+| API (Core) | Java 21 + Spring Boot 3 | 型安全・豊かなTx制御で**価値移転の信頼性**を担保。 |
+| BFF | Node.js 20 + Express | APIプロキシ/静的配信に適し、**疎結合**を保つ。 |
+| Frontend | Vue.js 3 + Vite | 宣言的UIと高速なHMRで**プロトタイピング迅速**。 |
+| DB | PostgreSQL 15+ | ACID, インデックス/トランザクションが堅牢、Flywayでマイグレーション管理。 |
+| Packaging | Docker + docker-compose | 誰でも**一発再現**できる開発環境。 |
+
+---
+
+## 4. データモデル（要点）
+
+### 4.1 コア・エンティティ
+- `users(id, handle, created_at, ...)`
+- `posts(id, author_id, title, body, tags[], image_url, created_at, ...)`
+- `likes(id, post_id, from_user, to_user, delta, alpha, c_b_at_tx, created_at)`  
+  **監査台帳**：数理の全パラメータ（δ, α, c_b）を必ず記録。
+- `matrix_entries(i, j, value)`（Eの疎表現） / `budgets(i, value)`（対角キャッシュ）
+
+### 4.2 不変条件（Invariants）
+- 行確率：`Σ_j E[i,j] = 1`（更新は常に `(-α, +α)` の**対**で行う）
+- 非負：`E[i,j] ≥ 0`
+- 貢献度：`sum(c) = N`（毎回の再計算で維持）
+
+---
+
+## 5. API設計（抜粋）
+
+- `POST /api/likes`  
+  - 入力：`postId`, `delta`（default 0.05）  
+  - 処理：`alpha = delta / c_b` → `E_bb -= alpha, E_bs += alpha` → `recompute c`  
+  - 出力：`{ alpha, newC, newBudget, ledgerId }`
+- `POST /api/recovery`  
+  - 入力：`gamma`  
+  - 処理：自然回収 → `recompute c`
+- `POST /api/members`（加入）  
+  - 処理：`x=1/N`で**不変拡張**（再計算不要）  
+  - 出力：`{ newN, userId }`
+
+> **トランザクション**：いずれも**単一Tx**で、台帳（`likes`）への書き込みと `E` の更新
+
+---
+
+## 6. アルゴリズム
+
+### 6.1 反復法（左固有）｜貢献度の計算のためのアルゴリズム
+```pseudo
+function powerIterationLeft(E):
+  v := normalize_to_sum1([1/N]*N)
+  repeat:
+     v_next := vE' = (vE) - (v ⊙ diag(E)) + (S - v ⊙ diag(E))/(N-1)
+       where S = Σ_i v_i E_ii
+     v_next := normalize_to_sum1(v_next)
+  until ||v_next - v||_1 < tol
+  return v_next * N
