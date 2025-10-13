@@ -1,6 +1,5 @@
-# PICSY_TrustLikePF — README
+# PICSY_TrustLikePF ムスビ: A Contribution Economy Platform　　— README
 
-# PICSY_TrustLikePF ムスビ: A Contribution Economy Platform　　
 
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
 ![version](https://img.shields.io/badge/version-v0.1.0-orange)
