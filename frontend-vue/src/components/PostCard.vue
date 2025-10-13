@@ -1,31 +1,33 @@
 <!-- frontend-vue/src/components/PostCard.vue -->
-<!-- 役割: 1件の投稿カード。アフォーダンスを見てボタン活性。Tx実行。 -->
+<!-- 役割: 投稿カード。ハート/リツイートで取引実行。 -->
 <template>
-  <div class="card">
-    <div class="head">
-      <div class="author">{{ short(post.creatorId) }}</div>
+  <article class="card">
+    <header class="head">
+      <div class="author">👤 {{ short(post.creatorId) }}</div>
       <div class="meta">
-        <span v-if="post.royaltyRate != null">ρ: {{ Number(post.royaltyRate).toFixed(2) }}</span>
+        <span v-if="post.royaltyRate != null">ρ {{ Number(post.royaltyRate).toFixed(2) }}</span>
         <span class="muted">{{ new Date(post.createdAt).toLocaleString() }}</span>
       </div>
-    </div>
-    <div class="body">{{ post.contentText }}</div>
+    </header>
 
-    <div class="actions">
+    <p class="body">{{ post.contentText }}</p>
+
+    <footer class="actions">
       <button
+        class="icon"
         :disabled="!afford.canLike || loading.like"
         :title="afford.likeReason"
-        @click="like">
-        👍 Like
-      </button>
+        @click="like"
+      >{{ loading.like ? '…' : '❤️' }}</button>
+
       <button
+        class="icon"
         :disabled="!afford.canQuote || loading.quote"
         :title="afford.quoteReason"
-        @click="quote">
-        🔁 Quote
-      </button>
-    </div>
-  </div>
+        @click="quote"
+      >{{ loading.quote ? '…' : '🔁' }}</button>
+    </footer>
+  </article>
 </template>
 
 <script setup>
@@ -39,67 +41,60 @@ const emit = defineEmits(['need-refresh'])
 
 const afford = ref({ canLike:false, likeReason:'', canQuote:false, quoteReason:'' })
 const loading = ref({ like:false, quote:false })
-const power = getState()
+const state = getState()
+
+function short(id){ return String(id).slice(0,8) }
 
 async function loadAffordance(){
-  if (!power.actor) {
+  if (!state.actor) {
     afford.value = { canLike:false, likeReason:'NO_ACTOR', canQuote:false, quoteReason:'NO_ACTOR' }
     return
   }
-  // ✅ 新パスに寄せる：/posts/{id}/actions?actor=...
-  const { data } = await api.get(`/posts/${props.post.postId}/actions`, {
-    params: { actor: power.actor }
-  })
+  // ✅ 新パス：/posts/{id}/actions?actor=...
+  const { data } = await api.get(`/posts/${props.post.postId}/actions`, { params: { actor: state.actor } })
   afford.value = data
 }
 
 async function like(){
-  try {
+  try{
     loading.value.like = true
-    const body = { actorId: power.actor, postId: props.post.postId, requestId: uuidv4() }
-    // ✅ /api を付けない
+    const body = { actorId: state.actor, postId: props.post.postId, requestId: uuidv4() }
     await api.post(`/posts/${props.post.postId}/like`, body)
     optimisticSpend(0.05)
     await loadAffordance()
     emit('need-refresh')
-  } finally { loading.value.like = false }
+  }catch(e){
+    alert(`Like failed: ${e?.response?.data?.message || e.message}`)
+  }finally{ loading.value.like = false }
 }
 
 async function quote(){
-  try {
+  try{
     loading.value.quote = true
     const reqId = uuidv4()
-    const body = { actorId: power.actor, postId: props.post.postId, requestId: reqId }
-
-    // 1) 引用投稿を新規作成（無料）
-    await api.post(`/posts/${props.post.postId}/quote`, body)
-
-    // 2) β 取引（MVP: default βを想定）
-    await api.post(`/posts/${props.post.postId}/quote/tx`, body)
-
-    // β=0.12の楽観更新
+    const body = { actorId: state.actor, postId: props.post.postId, requestId: reqId }
+    await api.post(`/posts/${props.post.postId}/quote`, body)     // 投稿生成（無料）
+    await api.post(`/posts/${props.post.postId}/quote/tx`, body)  // β 取引
     optimisticSpend(0.12)
     await loadAffordance()
     emit('need-refresh')
-  } catch(e){
-    console.error('quote failed', e)
-    alert('Quote failed')
-  } finally {
-    loading.value.quote = false
-  }
+  }catch(e){
+    alert(`Quote failed: ${e?.response?.data?.message || e.message}`)
+  }finally{ loading.value.quote = false }
 }
 
 onMounted(loadAffordance)
-watch(() => [power.actor, props.post.postId], loadAffordance)
+watch(() => [state.actor, props.post.postId], loadAffordance)
 </script>
 
 <style scoped>
-.card { border:1px solid var(--border); border-radius:8px; padding:10px; }
-.head { display:flex; align-items:center; justify-content:space-between; }
-.author{ font-weight:600; }
-.meta { display:flex; gap:8px; align-items:center; }
-.muted { color:var(--muted) }
-.body { margin:8px 0 12px; white-space:pre-wrap; }
-.actions { display:flex; gap:8px; }
-button[disabled]{ opacity:0.5; cursor:not-allowed; }
+.card{ border:1px solid var(--border); border-radius:12px; padding:12px; background:#fff }
+.head{ display:flex; align-items:center; justify-content:space-between; gap:10px }
+.author{ font-weight:700 }
+.meta{ display:flex; gap:10px; align-items:center }
+.muted{ color:var(--muted) }
+.body{ margin:8px 0 10px; white-space:pre-wrap; }
+.actions{ display:flex; gap:8px }
+.icon{ width:40px; height:36px; border-radius:10px; border:1px solid var(--border); background:#fff; font-size:18px; }
+.icon:disabled{ opacity:.45; cursor:not-allowed }
 </style>
