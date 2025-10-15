@@ -1,4 +1,4 @@
-// TrustlikepfApplication.java
+// backend-java/src/main/java/com/picsy/trustlikepf/TrustlikepfApplication.java
 package com.picsy.trustlikepf;
 
 import org.springframework.boot.SpringApplication;

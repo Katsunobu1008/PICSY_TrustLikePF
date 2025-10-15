@@ -1,4 +1,4 @@
-// ContributionVectorRepository.java
+// backend-java/src/main/java/com/picsy/trustlikepf/domain/repository/ContributionVectorRepository.java
 package com.picsy.trustlikepf.domain.repository;
 
 import java.util.List;

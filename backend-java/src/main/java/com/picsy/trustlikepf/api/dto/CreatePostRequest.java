@@ -1,4 +1,4 @@
-//CreatePostRequest.java
+// backend-java/src/main/java/com/picsy/trustlikepf/api/dto/CreatePostRequest.java
 package com.picsy.trustlikepf.api.dto;
 
 import java.util.List;

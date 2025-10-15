@@ -1,4 +1,4 @@
-// AffordanceController.java
+// backend-java/src/main/java/com/picsy/trustlikepf/api/AffordanceController.java
 package com.picsy.trustlikepf.api;
 
 import java.util.UUID;

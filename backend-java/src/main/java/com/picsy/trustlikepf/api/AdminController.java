@@ -1,4 +1,4 @@
-// AdminController.java
+// backend-java/src/main/java/com/picsy/trustlikepf/api/AdminController.java
 package com.picsy.trustlikepf.api;
 
 import org.springframework.http.ResponseEntity;
