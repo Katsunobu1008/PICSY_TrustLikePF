@@ -1,31 +1,45 @@
 <!-- frontend-vue/src/components/PostCard.vue -->
 <!-- 役割: 投稿カード。ハート/リツイートで取引実行。 -->
 <template>
-  <article class="card">
-    <header class="head">
-      <div class="author">👤 {{ short(post.creatorId) }}</div>
-      <div class="meta">
-        <span v-if="post.royaltyRate != null">ρ {{ Number(post.royaltyRate).toFixed(2) }}</span>
-        <span class="muted">{{ new Date(post.createdAt).toLocaleString() }}</span>
+  <article class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm transition hover:shadow-md">
+    <header class="flex items-center justify-between gap-2 text-sm text-gray-500">
+      <div class="font-bold text-gray-800">👤 {{ short(post.creatorId) }}</div>
+      <div class="flex items-center gap-3">
+        <span v-if="post.royaltyRate != null" class="text-purple-600 font-semibold">ρ {{ Number(post.royaltyRate).toFixed(2) }}</span>
+        <span class="text-gray-400">{{ new Date(post.createdAt).toLocaleString() }}</span>
       </div>
     </header>
 
-    <p class="body">{{ post.contentText }}</p>
+    <p class="my-3 text-gray-700 whitespace-pre-wrap">{{ post.contentText }}</p>
 
-    <footer class="actions">
+    <footer class="flex gap-2">
       <button
-        class="icon"
+        class="flex items-center justify-center w-12 h-10 rounded-lg text-xl transition"
+        :class="{
+          'text-gray-400 bg-gray-100 cursor-not-allowed': !afford.canLike || loading.like,
+          'text-red-500 bg-red-100 hover:bg-red-200': afford.canLike && !loading.like
+        }"
         :disabled="!afford.canLike || loading.like"
         :title="afford.likeReason"
         @click="like"
-      >{{ loading.like ? '…' : '❤️' }}</button>
+      >
+        <span v-if="loading.like" class="animate-spin">⏳</span>
+        <span v-else>❤️</span>
+      </button>
 
       <button
-        class="icon"
+        class="flex items-center justify-center w-12 h-10 rounded-lg text-xl transition"
+        :class="{
+          'text-gray-400 bg-gray-100 cursor-not-allowed': !afford.canQuote || loading.quote,
+          'text-green-500 bg-green-100 hover:bg-green-200': afford.canQuote && !loading.quote
+        }"
         :disabled="!afford.canQuote || loading.quote"
         :title="afford.quoteReason"
         @click="quote"
-      >{{ loading.quote ? '…' : '🔁' }}</button>
+      >
+        <span v-if="loading.quote" class="animate-spin">⏳</span>
+        <span v-else>🔁</span>
+      </button>
     </footer>
   </article>
 </template>
@@ -88,13 +102,6 @@ watch(() => [state.actor, props.post.postId], loadAffordance)
 </script>
 
 <style scoped>
-.card{ border:1px solid var(--border); border-radius:12px; padding:12px; background:#fff }
-.head{ display:flex; align-items:center; justify-content:space-between; gap:10px }
-.author{ font-weight:700 }
-.meta{ display:flex; gap:10px; align-items:center }
-.muted{ color:var(--muted) }
-.body{ margin:8px 0 10px; white-space:pre-wrap; }
-.actions{ display:flex; gap:8px }
-.icon{ width:40px; height:36px; border-radius:10px; border:1px solid var(--border); background:#fff; font-size:18px; }
-.icon:disabled{ opacity:.45; cursor:not-allowed }
+/* Tailwind CSS will handle styling through utility classes in the template. */
+/* This style block can be removed or kept for component-specific overrides. */
 </style>
