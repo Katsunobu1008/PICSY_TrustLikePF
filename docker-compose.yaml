@@ -3,14 +3,14 @@ services:
     image: postgres:15
     environment:
       - POSTGRES_DB=picsy_pf
-      - POSTGRES_USER=user
+      - POSTGRES_USER=picsy
       - POSTGRES_PASSWORD=password
     ports: ["5432:5432"]
     volumes: [postgres-data:/var/lib/postgresql/data]
     networks: [picsy-net]
     healthcheck:
       # DB の起動完了を厳密に判定
-      test: ["CMD-SHELL", "pg_isready -U user -d picsy_pf -h localhost"]
+      test: ["CMD-SHELL", "pg_isready -U picsy -d picsy_pf -h localhost"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -25,7 +25,7 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/picsy_pf
-      - SPRING_DATASOURCE_USERNAME=user
+      - SPRING_DATASOURCE_USERNAME=picsy
       - SPRING_DATASOURCE_PASSWORD=password
       - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
       - SPRING_JPA_HIBERNATE_DDL_AUTO=none

@@ -10,7 +10,7 @@ export default defineConfig({
     proxy: {
       // バックエンド Spring Boot (http://localhost:8080) へ
       '/api': {
-        target: 'http://localhost:808',
+        target: 'http://localhost:8080',
         changeOrigin: true,
       },
     },
