@@ -1,21 +1,29 @@
 /* frontend-vue/src/assets/base.css */
 /* 役割: ごく簡単なベーススタイル（ライト固定） */
 :root {
-  --bg: #fafafa;
-  --fg: #111;
-  --card: #fff;
-  --muted: #666;
-  --border: #e6e6e6;
-  --accent: #0f62fe;
-  --accent-weak: #e8f0ff;
-  --danger: #b00020;
+  --bg: #f0f2f5;
+  --fg: #050505;
+  --card: #ffffff;
+  --muted: #606770;
+  --border: #d7dce3;
+  --accent: #1877f2;
+  --accent-weak: rgba(24, 119, 242, 0.12);
+  --danger: #f02849;
 }
 * {
   box-sizing: border-box;
 }
 body {
   margin: 0;
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-family:
+    'Helvetica Neue',
+    Arial,
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background: var(--bg);
+  color: var(--fg);
 }
 .card {
   background: var(--card);
@@ -29,10 +37,16 @@ body {
   gap: 6px;
   border: 1px solid var(--border);
   padding: 8px 12px;
-  border-radius: 8px;
-  background: #fff;
+  border-radius: 9999px;
+  background: var(--card);
   color: var(--fg);
   cursor: pointer;
+  transition:
+    background 150ms ease,
+    transform 150ms ease;
+}
+.btn:hover {
+  background: rgba(24, 119, 242, 0.08);
 }
 .btn[disabled] {
   opacity: 0.5;
@@ -50,9 +64,10 @@ body {
 .select {
   width: 100%;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: 12px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--card);
+  color: var(--fg);
 }
 .row {
   display: flex;
