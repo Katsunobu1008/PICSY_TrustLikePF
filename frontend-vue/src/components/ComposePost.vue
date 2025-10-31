@@ -1,75 +1,134 @@
 <!-- frontend-vue/src/components/ComposePost.vue -->
-<!-- 役割: 原作投稿フォーム（ロイヤリティ必須）。成功/失敗のフィードバック付き -->
+<!-- 役割: フィードカードとして投稿導線を提示し、モーダルで実際の投稿処理を行う -->
 <template>
-  <form class="compose" @submit.prevent="submit">
-    <h3>New Post</h3>
-    <textarea v-model="content" placeholder="Share something..."></textarea>
-    <div class="row">
-      <label>royalty (0.00 - 1.00)</label>
-      <input type="number" step="0.01" min="0" max="1" v-model.number="royalty"/>
-      <button :disabled="!canSubmit || busy">{{ busy ? 'Posting...' : 'Post' }}</button>
+  <section class="rounded-card bg-surface p-5 shadow-card">
+    <header class="flex items-start justify-between gap-4">
+      <div class="flex items-start gap-3">
+        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-brand/10 text-base font-semibold text-brand">
+          {{ actorInitials }}
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-slate-900">
+            {{ actor ? `Actor ${short(actor)}` : 'アクター未設定' }}
+          </p>
+          <p class="text-xs text-muted">
+            {{ actor ? '今のアイデアをシェアするとフィードが即時更新されます。' : 'トップバーのメニューからアクターを設定すると投稿できます。' }}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        :class="{ 'opacity-60': !actor }"
+        :disabled="!actor"
+        @click="openComposer"
+      >
+        投稿を作成
+      </button>
+    </header>
+
+    <button
+      type="button"
+      class="mt-5 flex w-full items-center gap-3 rounded-full border border-outline bg-white px-5 py-3 text-left text-sm text-slate-600 transition hover:bg-slate-100"
+      :class="{ 'cursor-not-allowed opacity-60': !actor }"
+      :disabled="!actor"
+      @click="openComposer"
+    >
+      <span class="text-muted">{{ actor ? '今どんなことを共有しますか？' : '投稿するにはアクターを設定してください' }}</span>
+    </button>
+
+    <div class="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted">
+      <button
+        type="button"
+        class="inline-flex items-center gap-2 rounded-full border border-outline px-3 py-1.5 transition hover:bg-slate-100"
+        :disabled="!actor"
+      >
+        ✏️ テキスト
+      </button>
+      <button
+        type="button"
+        class="inline-flex items-center gap-2 rounded-full border border-outline px-3 py-1.5 transition hover:bg-slate-100"
+        :disabled="!actor"
+      >
+        🖼 メディア
+      </button>
+      <button
+        type="button"
+        class="inline-flex items-center gap-2 rounded-full border border-outline px-3 py-1.5 transition hover:bg-slate-100"
+        :disabled="!actor"
+      >
+        📎 添付
+      </button>
     </div>
-    <p class="muted">Actor: <code>{{ short(actor) || '(unset)' }}</code></p>
-    <p v-if="msg" :class="ok ? 'ok':'err'">{{ msg }}</p>
-  </form>
+
+    <p v-if="toast" class="mt-5 rounded-full bg-emerald-50 px-4 py-2 text-center text-xs font-semibold text-emerald-600">
+      {{ toast }}
+    </p>
+
+    <PostComposerModal
+      v-if="isModalOpen"
+      :actor="actor"
+      :default-royalty="DEFAULT_ROYALTY"
+      @close="closeComposer"
+      @posted="handlePosted"
+      @needs-actor="handleNeedsActor"
+    />
+  </section>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import api from '../lib/api'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import PostComposerModal from './compose/PostComposerModal.vue'
 import { getState } from '../stores/power'
 
-const st = getState()
-const actor = computed(() => st.actor)
+const state = getState()
+const actor = computed(() => state.actor)
+const actorInitials = computed(() => (actor.value ? String(actor.value).slice(0, 2).toUpperCase() : '?'))
 
-const content = ref('')
-const royalty = ref(0.7)
-const busy = ref(false)
-const ok = ref(false)
-const msg = ref('')
+const isModalOpen = ref(false)
+const toast = ref('')
+const DEFAULT_ROYALTY = 0.7
+let toastTimer = null
 
-const canSubmit = computed(() =>
-  actor.value && content.value.trim().length>0 &&
-  Number.isFinite(royalty.value) && royalty.value>=0 && royalty.value<=1
-)
-
-function short(id){ return String(id||'').slice(0,8) }
-
-async function submit(){
-  if (!canSubmit.value) return
-  try{
-    busy.value = true
-    msg.value = ''
-    const body = {
-      creatorId: actor.value,
-      contentText: content.value.trim(),
-      royaltyRate: Number(royalty.value),
-      parentPostId: null,
-      mediaKeys: []
-    }
-    await api.post('/posts', body)
-    ok.value = true; msg.value = 'Posted!'
-    content.value = ''
-    // TL を更新
-    window.dispatchEvent(new CustomEvent('timeline:refresh'))
-  }catch(e){
-    ok.value = false
-    const detail = e?.response?.data?.message || e?.message || 'unknown'
-    msg.value = `Post failed: ${detail}`
-  }finally{
-    busy.value = false
-  }
+function short(id) {
+  return id ? String(id).slice(0, 8) : ''
 }
-</script>
 
-<style scoped>
-.compose{ border:1px solid var(--border); padding:14px; border-radius:10px; display:flex; flex-direction:column; gap:10px; background:#fff }
-h3{ margin:0 0 6px; }
-textarea{ min-height:96px; resize:vertical; padding:10px; border:1px solid var(--border); border-radius:8px; }
-.row{ display:flex; gap:10px; align-items:center }
-input{ width:120px; padding:6px 8px; border:1px solid var(--border); border-radius:6px; }
-button{ padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:#111827; color:#fff; }
-.muted{ color:var(--muted); margin:0 }
-.ok{ color:#065f46 }
-.err{ color:#b91c1c }
-</style>
+function openComposer() {
+  isModalOpen.value = true
+}
+
+function closeComposer() {
+  isModalOpen.value = false
+}
+
+function setToast(message) {
+  toast.value = message
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toast.value = ''
+  }, 3000)
+}
+
+function handlePosted() {
+  setToast('フィードに投稿しました。')
+  window.dispatchEvent(new CustomEvent('timeline:refresh'))
+}
+
+function handleNeedsActor() {
+  if (!actor.value) setToast('投稿するにはアクターを設定してください。')
+}
+
+function handleGlobalCompose() {
+  openComposer()
+}
+
+onMounted(() => {
+  window.addEventListener('compose:open', handleGlobalCompose)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('compose:open', handleGlobalCompose)
+  if (toastTimer) clearTimeout(toastTimer)
+})
+</script>
