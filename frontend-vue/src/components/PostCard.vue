@@ -116,11 +116,12 @@ import { ref, onMounted, watch, computed } from 'vue'
 import api from '../lib/api'
 import { getState, optimisticSpend } from '../stores/power'
 import { uuidv4 } from '../lib/uuid'
+import { affordanceReasonMessage, resolveApiError, actionLabel } from '../lib/errorMessages'
 
 const props = defineProps({ post: { type:Object, required:true } })
 const emit = defineEmits(['need-refresh'])
 
-const afford = ref({
+const BASE_AFFORD = Object.freeze({
   canLike:false,
   likeReason:'',
   powerLike:null,
@@ -130,6 +131,8 @@ const afford = ref({
   powerQuote:null,
   neededQuote:null,
 })
+
+const afford = ref({ ...BASE_AFFORD })
 const loading = ref({ like:false, quote:false })
 const state = getState()
 
@@ -178,12 +181,8 @@ function buttonClasses(kind){
 function reasonLabel(kind){
   const reasonKey = kind === 'like' ? 'likeReason' : 'quoteReason'
   const reason = afford.value[reasonKey]
-  if (!reason) return ''
-  const dictionary = {
-    NO_ACTOR: 'アクターを設定してください。',
-    INSUFFICIENT_POWER: '購買力が不足しています。',
-  }
-  return dictionary[reason] || reason
+  if (!reason || reason === 'OK') return ''
+  return affordanceReasonMessage(reason)
 }
 
 function formatPower(value){
@@ -191,26 +190,51 @@ function formatPower(value){
   return Number(value).toFixed(2)
 }
 
+function setAffordance(patch){
+  afford.value = { ...BASE_AFFORD, ...patch }
+}
+
 async function loadAffordance(){
   if (!state.actor) {
-    afford.value = {
+    setAffordance({
       canLike:false,
       likeReason:'NO_ACTOR',
-      powerLike:null,
-      neededLike:null,
       canQuote:false,
       quoteReason:'NO_ACTOR',
-      powerQuote:null,
-      neededQuote:null,
-    }
+    })
     return
   }
-  // ✅ 新パス：/posts/{id}/actions?actor=...
-  const { data } = await api.get(`/posts/${props.post.postId}/actions`, { params: { actor: state.actor } })
-  afford.value = data
+  try {
+    const { data } = await api.get(`/posts/${props.post.postId}/actions`, { params: { actor: state.actor } })
+    setAffordance(data)
+  } catch (e) {
+    console.warn('affordance fetch failed', e)
+    setAffordance({
+      canLike:false,
+      likeReason:'FETCH_FAILED',
+      canQuote:false,
+      quoteReason:'FETCH_FAILED',
+    })
+  }
+}
+
+function ensureInteractionReady(kind){
+  if (loading.value[kind]) return false
+  if (!state.actor) {
+    window.alert(`${actionLabel[kind]}を実行できません: ${affordanceReasonMessage('NO_ACTOR')}`)
+    return false
+  }
+  const affordKey = kind === 'like' ? 'canLike' : 'canQuote'
+  if (!afford.value[affordKey]) {
+    const reason = reasonLabel(kind)
+    if (reason) window.alert(`${actionLabel[kind]}を実行できません: ${reason}`)
+    return false
+  }
+  return true
 }
 
 async function like(){
+  if (!ensureInteractionReady('like')) return
   try{
     loading.value.like = true
     const body = { actorId: state.actor, postId: props.post.postId, requestId: uuidv4() }
@@ -219,11 +243,12 @@ async function like(){
     await loadAffordance()
     emit('need-refresh')
   }catch(e){
-    alert(`Like failed: ${e?.response?.data?.message || e.message}`)
+    window.alert(resolveApiError(e, 'Likeの実行に失敗しました。'))
   }finally{ loading.value.like = false }
 }
 
 async function quote(){
+  if (!ensureInteractionReady('quote')) return
   try{
     loading.value.quote = true
     const reqId = uuidv4()
@@ -234,7 +259,7 @@ async function quote(){
     await loadAffordance()
     emit('need-refresh')
   }catch(e){
-    alert(`Quote failed: ${e?.response?.data?.message || e.message}`)
+    window.alert(resolveApiError(e, 'Quoteの実行に失敗しました。'))
   }finally{ loading.value.quote = false }
 }
 
