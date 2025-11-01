@@ -38,7 +38,10 @@ public class EvaluationRowService {
         var row = new Row(evaluatorId);
         list.forEach(e -> row.cols().put(e.getId().getEvaluateeId(), e));
         for (UUID colId : ensureCols) {
-            row.cols().computeIfAbsent(colId, cid -> repo.save(new EvaluationMatrix(evaluatorId, cid, 0.0)));
+            row.cols().computeIfAbsent(colId, cid -> {
+                double initialValue = cid.equals(evaluatorId) ? 1.0 : 0.0;
+                return repo.save(new EvaluationMatrix(evaluatorId, cid, initialValue));
+            });
         }
         return row;
     }

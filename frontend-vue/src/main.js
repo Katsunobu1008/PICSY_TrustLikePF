@@ -7,16 +7,38 @@ import App from './App.vue'
 import './assets/main.css'
 
 import { setActor, startPolling } from './stores/power'
+import api from './lib/api'
 
 const app = createApp(App)
 app.use(createPinia())
 app.use(router)
 app.mount('#app')
 
-// URL の ?actor を一度だけ反映
-const params = new URLSearchParams(window.location.search)
-const actor = params.get('actor')
-if (actor) setActor(actor)
+async function bootstrapActorContext() {
+  await router.isReady()
+  const current = router.currentRoute.value
+  const queryActor = typeof current.query.actor === 'string' ? current.query.actor : null
+  if (queryActor) {
+    setActor(queryActor)
+    return
+  }
+
+  try {
+    const { data } = await api.get('/v1/dashboard/active-users')
+    const first = data?.users?.[0]?.userId
+    if (first) {
+      setActor(first)
+      router.replace({
+        path: current.path,
+        query: { ...current.query, actor: first },
+      })
+    }
+  } catch (error) {
+    console.warn('failed to bootstrap actor context', error)
+  }
+}
+
+bootstrapActorContext()
 
 // 購買力の定期ポーリング開始
 startPolling()

@@ -10,13 +10,15 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 const BACKEND = process.env.BACKEND_API_URL || 'http://localhost:8081';
+const API_PREFIX = '/api';
 
 // ✅ /api を backend にそのまま流す（pathRewriteは不要）
 app.use(
-  '/api',
+  API_PREFIX,
   createProxyMiddleware({
     target: BACKEND,
     changeOrigin: true,
+    pathRewrite: (path, req) => `${API_PREFIX}${path}`,
     // logLevel: 'debug',   // 困ったときだけ一時的に有効化
   })
 );

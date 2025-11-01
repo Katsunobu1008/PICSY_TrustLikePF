@@ -24,10 +24,10 @@
         >
           ρ {{ Number(post.royaltyRate).toFixed(2) }}
         </span>
-        <div class="flex items-center gap-2 text-xs text-muted">
+        <div class="text-xs text-muted">
           <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1">
             <span class="h-2 w-2 rounded-full bg-emerald-400" />
-            {{ postsSince }}
+            {{ interactionStatus }}
           </span>
         </div>
       </div>
@@ -140,7 +140,16 @@ const shortId = computed(() => short(props.post.creatorId))
 const initials = computed(() => shortId.value.slice(0, 2).toUpperCase())
 const accentColor = computed(() => accentFromId(props.post.creatorId))
 const formattedTimestamp = computed(() => formatTimestamp(props.post.createdAt))
-const postsSince = computed(() => `投稿ID ${String(props.post.postId || '').slice(0, 6)}…`)
+const interactionStatus = computed(() => {
+  if (loading.value.like || loading.value.quote) return '処理中…'
+  if (!state.actor) return 'アクター未設定'
+  const likeOk = afford.value.likeReason === 'OK'
+  const quoteOk = afford.value.quoteReason === 'OK'
+  if (likeOk && quoteOk) return 'すべてのアクションが可能です'
+  if (likeOk || quoteOk) return likeOk ? 'Like は実行可能' : 'Quote は実行可能'
+  const reason = afford.value.likeReason || afford.value.quoteReason || 'FETCH_FAILED'
+  return affordanceReasonMessage(reason)
+})
 
 function short(id){ return String(id).slice(0,8) }
 

@@ -4,6 +4,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -38,7 +41,8 @@ public class TransactionLog {
     @Column(name = "request_id", nullable = false, unique = true)
     private UUID requestId;
 
-    // ★ H2 互換のため columnDefinition を外す（本番は Flyway が JSONB を作成）
+    // H2 互換を保ちつつ PostgreSQL では JSONB として扱う
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "details")
     private String details;
 

@@ -33,7 +33,7 @@ public class AffordanceService {
         this.postRepo = postRepo;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AffordanceResponse forActorAndPost(UUID actorId, UUID postId){
         var post = postRepo.findById(postId).orElseThrow();
         var row  = eService.lockAndLoad(actorId, Set.of(actorId)).cols();

@@ -75,12 +75,14 @@
             :formatted-power="formattedPower"
             :formatted-eii="formattedEii"
             :formatted-c="formattedC"
+            :actors="actors"
             :copy-message="copyMessage"
             @update:local-value="value => (local = value)"
             @apply="apply"
             @clear="clearActor"
             @copy="copyActor"
             @close="closePopover"
+            @select="selectActor"
           />
         </div>
       </div>
@@ -89,10 +91,11 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ActorPopover from './topnav/ActorPopover.vue'
 import { getState } from '../stores/power'
+import api from '../lib/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -141,6 +144,7 @@ const actorInitials = computed(() => {
 const local = ref(route.query.actor || '')
 const search = ref('')
 const popoverOpen = ref(false)
+const actors = ref([])
 const copyMessage = ref('')
 const avatarButtonRef = ref(null)
 const popoverRef = ref(null)
@@ -197,6 +201,12 @@ function apply() {
   popoverOpen.value = false
 }
 
+function selectActor(id) {
+  if (!id) return
+  local.value = id
+  apply()
+}
+
 function clearActor() {
   if (!actor.value && !local.value) return
   local.value = ''
@@ -224,5 +234,14 @@ onBeforeUnmount(() => {
   if (copyTimer) clearTimeout(copyTimer)
   document.removeEventListener('click', handleOutsideClick, true)
   document.removeEventListener('keydown', handleKeydown)
+})
+
+onMounted(async () => {
+  try {
+    const { data } = await api.get('/v1/dashboard/active-users')
+    actors.value = data?.users ?? []
+  } catch (error) {
+    console.warn('active users fetch failed', error)
+  }
 })
 </script>

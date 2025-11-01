@@ -77,7 +77,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import PostComposerModal from './compose/PostComposerModal.vue'
 import { getState } from '../stores/power'
 
@@ -94,12 +94,12 @@ function short(id) {
   return id ? String(id).slice(0, 8) : ''
 }
 
-function openComposer() {
-  if (!actor.value) {
-    handleNeedsActor()
-    return
-  }
+async function openComposer() {
   isModalOpen.value = true
+  if (!actor.value) {
+    await nextTick()
+    handleNeedsActor()
+  }
 }
 
 function closeComposer() {

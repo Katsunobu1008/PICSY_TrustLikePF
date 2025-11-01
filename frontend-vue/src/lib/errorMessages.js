@@ -15,7 +15,8 @@ const ERROR_MESSAGES = {
   INVALID_BETA_OVERRIDE: '指定されたβ値が不正です。',
   ACTOR_NOT_FOUND: '指定されたアクターが存在しません。',
   POST_CREATOR_NOT_FOUND: '投稿者が存在しません。',
-  CONTRIBUTION_VECTOR_MISSING: '購買力の情報が取得できませんでした。しばらくしてから再度お試しください。',
+  CONTRIBUTION_VECTOR_MISSING:
+    '購買力の情報が取得できませんでした。しばらくしてから再度お試しください。',
   BAD_REQUEST: 'リクエスト内容に誤りがあります。',
   REQUEST_ID_CONFLICT: '同じリクエストが既に処理されています。最新の状態を確認してください。',
 }
