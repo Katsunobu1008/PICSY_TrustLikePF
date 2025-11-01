@@ -1,23 +1,26 @@
 <!-- frontend-vue/src/components/compose/PostComposerModal.vue -->
-<!-- 役割: 投稿モーダル。アクター情報を表示しつつ本文とロイヤリティを設定する -->
+<!-- 役割: 投稿モーダル。背景をディムし中央にカードを表示する -->
 <template>
   <Teleport to="body">
-    <div class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto px-4 py-10">
-      <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="requestClose('backdrop')" />
+    <div
+      class="fixed inset-0 z-50 flex min-h-screen items-center justify-center overflow-y-auto bg-slate-950/60 px-4 py-10 backdrop-blur-sm"
+      role="presentation"
+      @click.self="requestClose('backdrop')"
+    >
       <div
         ref="dialogRef"
-        class="relative z-10 w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl"
+        class="relative w-full max-w-2xl overflow-hidden rounded-[28px] border border-white/60 bg-white/95 shadow-[0_24px_48px_rgba(15,23,42,0.18)] backdrop-blur"
         role="dialog"
         aria-modal="true"
       >
-        <header class="flex items-start justify-between gap-3">
+        <header class="flex items-start justify-between gap-4 border-b border-slate-200/70 px-6 py-5 sm:px-8">
           <div>
             <p class="text-lg font-semibold text-slate-900">投稿を作成</p>
-            <p class="text-xs text-muted">ロイヤリティを設定してフィードへ共有します。</p>
+            <p class="text-xs text-muted">ロイヤリティと本文を整えてフィードに共有します。</p>
           </div>
           <button
             type="button"
-            class="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+            class="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             :disabled="busy"
             aria-label="モーダルを閉じる"
             @click="requestClose('button')"
@@ -26,7 +29,7 @@
           </button>
         </header>
 
-        <form class="mt-5 space-y-5" @submit.prevent="submit">
+        <form class="flex flex-col gap-6 px-6 py-6 sm:px-8" @submit.prevent="submit">
           <div class="flex items-center gap-3">
             <div class="flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-sm font-semibold text-brand">
               {{ actorInitials }}
@@ -44,11 +47,11 @@
           <textarea
             ref="textareaRef"
             v-model="content"
-            class="h-36 w-full rounded-2xl border border-outline px-4 py-3 text-base text-slate-800 placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/40"
-            placeholder="今どんなアイデアを共有しますか？"
-          />
+            class="min-h-[180px] w-full resize-none rounded-3xl border border-slate-200/80 bg-white/95 px-5 py-4 text-base leading-relaxed text-slate-900 placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
+            placeholder="今のアイデアを共有しましょう"
+          ></textarea>
 
-          <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div class="flex flex-col gap-4 rounded-3xl bg-slate-50/90 p-4 sm:flex-row sm:items-center sm:justify-between">
             <label class="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
               ロイヤリティ (0.00 - 1.00)
               <div class="flex items-center gap-3 text-slate-600">
@@ -58,7 +61,7 @@
                   min="0"
                   max="1"
                   step="0.01"
-                  class="w-40 accent-brand"
+                  class="w-44 accent-brand"
                 />
                 <input
                   v-model.number="royalty"
@@ -66,29 +69,29 @@
                   min="0"
                   max="1"
                   step="0.01"
-                  class="w-20 rounded-xl border border-outline px-3 py-2 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  class="w-24 rounded-2xl border border-outline px-3 py-2 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
                 />
                 <span class="text-[11px] text-muted">推奨値 0.70</span>
               </div>
             </label>
-            <p class="text-xs text-muted">ロイヤリティは Like / Quote で自動精算されます。</p>
+            <p class="text-xs text-muted">ロイヤリティは Like / Quote 処理で自動的に配分されます。</p>
           </div>
 
           <div class="flex items-center gap-3 text-xs">
-            <div class="relative h-2 flex-1 overflow-hidden rounded-full bg-slate-200">
+            <div class="relative h-2 flex-1 overflow-hidden rounded-full bg-slate-200/80">
               <div
                 class="absolute inset-y-0 left-0 rounded-full transition-all duration-200"
                 :class="progressClass"
                 :style="progressStyle"
-              />
+              ></div>
             </div>
             <span :class="charClass">{{ charCount }} / {{ SUGGESTED_LENGTH }}</span>
           </div>
 
-          <div class="flex justify-end gap-3 pt-2">
+          <div class="flex flex-wrap items-center justify-end gap-3 pt-2">
             <button
               type="button"
-              class="rounded-full border border-outline px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+              class="rounded-full border border-outline px-5 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand/70"
               :disabled="busy"
               @click="requestClose('cancel')"
             >
@@ -96,7 +99,7 @@
             </button>
             <button
               type="submit"
-              class="inline-flex items-center justify-center rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              class="inline-flex items-center justify-center rounded-full bg-brand px-6 py-2 text-sm font-semibold text-white transition hover:bg-brand/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
               :class="{ 'opacity-60': !canSubmit || busy }"
               :disabled="!canSubmit || busy"
             >
@@ -135,8 +138,10 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'posted', 'needs-actor'])
 
+const initialRoyalty = Number.isFinite(props.defaultRoyalty) ? props.defaultRoyalty : 0.7
+
 const content = ref('')
-const royalty = ref(props.defaultRoyalty)
+const royalty = ref(initialRoyalty)
 const busy = ref(false)
 const ok = ref(false)
 const msg = ref('')
@@ -161,7 +166,12 @@ const progressClass = computed(() => {
 const progressStyle = computed(() => ({ width: `${Math.min(100, (charCount.value / SUGGESTED_LENGTH) * 100)}%` }))
 
 const canSubmit = computed(
-  () => Boolean(props.actor) && trimmedContent.value.length > 0 && Number.isFinite(royalty.value) && royalty.value >= 0 && royalty.value <= 1
+  () =>
+    Boolean(props.actor) &&
+    trimmedContent.value.length > 0 &&
+    Number.isFinite(royalty.value) &&
+    royalty.value >= 0 &&
+    royalty.value <= 1
 )
 
 const statusClass = computed(() => (ok.value ? 'text-emerald-600' : 'text-rose-600'))
@@ -170,7 +180,7 @@ const actorInitials = computed(() => (props.actor ? String(props.actor).slice(0,
 watch(
   () => props.defaultRoyalty,
   (val) => {
-    if (Number.isFinite(val)) royalty.value = val
+    royalty.value = Number.isFinite(val) ? val : 0.7
   }
 )
 
@@ -233,7 +243,7 @@ async function submit() {
     closeTimer = setTimeout(() => requestClose('success'), 900)
   } catch (error) {
     ok.value = false
-    const detail = error?.response?.data?.message || error?.message || '理由不明のエラー'
+    const detail = error?.response?.data?.message || error?.message || '原因不明のエラー'
     msg.value = `投稿に失敗しました: ${detail}`
   } finally {
     busy.value = false

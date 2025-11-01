@@ -1,5 +1,5 @@
 <!-- frontend-vue/src/components/ComposePost.vue -->
-<!-- 役割: フィードカードとして投稿導線を提示し、モーダルで実際の投稿処理を行う -->
+<!-- 役割: フィードの投稿導線。モーダルを開いて投稿体験を開始する -->
 <template>
   <section class="rounded-card bg-surface p-5 shadow-card">
     <header class="flex items-start justify-between gap-4">
@@ -12,7 +12,7 @@
             {{ actor ? `Actor ${short(actor)}` : 'アクター未設定' }}
           </p>
           <p class="text-xs text-muted">
-            {{ actor ? '今のアイデアをシェアするとフィードが即時更新されます。' : 'トップバーのメニューからアクターを設定すると投稿できます。' }}
+            {{ actor ? '今のアイデアを共有するとフィードが即時に更新されます。' : 'トップバーからアクターを設定すると投稿できます。' }}
           </p>
         </div>
       </div>
@@ -95,6 +95,10 @@ function short(id) {
 }
 
 function openComposer() {
+  if (!actor.value) {
+    handleNeedsActor()
+    return
+  }
   isModalOpen.value = true
 }
 
@@ -113,6 +117,7 @@ function setToast(message) {
 function handlePosted() {
   setToast('フィードに投稿しました。')
   window.dispatchEvent(new CustomEvent('timeline:refresh'))
+  closeComposer()
 }
 
 function handleNeedsActor() {
