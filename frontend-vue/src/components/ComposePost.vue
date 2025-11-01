@@ -20,7 +20,6 @@
         type="button"
         class="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         :class="{ 'opacity-60': !actor }"
-        :disabled="!actor"
         @click="openComposer"
       >
         投稿を作成
@@ -30,8 +29,7 @@
     <button
       type="button"
       class="mt-5 flex w-full items-center gap-3 rounded-full border border-outline bg-white px-5 py-3 text-left text-sm text-slate-600 transition hover:bg-slate-100"
-      :class="{ 'cursor-not-allowed opacity-60': !actor }"
-      :disabled="!actor"
+      :class="{ 'opacity-60': !actor }"
       @click="openComposer"
     >
       <span class="text-muted">{{ actor ? '今どんなことを共有しますか？' : '投稿するにはアクターを設定してください' }}</span>
