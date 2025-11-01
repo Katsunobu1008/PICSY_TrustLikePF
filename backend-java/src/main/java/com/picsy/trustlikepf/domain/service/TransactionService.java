@@ -2,8 +2,11 @@
 package com.picsy.trustlikepf.domain.service;
 
 import java.math.BigDecimal;
-import java.util.Set;
+import java.util.LinkedHashSet;
 import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -20,6 +23,8 @@ import com.picsy.trustlikepf.domain.repository.UserRepository;
 
 @Service
 public class TransactionService {
+
+    private static final Logger log = LoggerFactory.getLogger(TransactionService.class);
 
     private final EvaluationRowService eService;
     private final ContributionVectorRepository cRepo;
@@ -46,24 +51,36 @@ public class TransactionService {
 
     @Transactional
     public void like(LikeRequest req){
-        if (txRepo.findByRequestId(req.requestId()).isPresent()) return;
+        UUID actor = requireUuid(req.actorId(), "ACTOR_ID_REQUIRED");
+        UUID postId = requireUuid(req.postId(), "POST_ID_REQUIRED");
+        UUID requestId = requireUuid(req.requestId(), "REQUEST_ID_REQUIRED");
 
-        var post  = postRepo.findById(req.postId()).orElseThrow(() -> new IllegalArgumentException("post not found"));
-        UUID actor = req.actorId();
+        if (txRepo.findByRequestId(requestId).isPresent()) {
+            log.debug("Duplicate like request {} ignored", requestId);
+            return;
+        }
+
+        var post = postRepo.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("POST_NOT_FOUND"));
 
         // 自己いいね禁止
         if (post.getCreatorId().equals(actor)) {
             throw new IllegalStateException("SELF_LIKE_NOT_ALLOWED");
         }
         // 凍結チェック（支払者・受益者）
-        var actorUser  = userRepo.findById(actor).orElseThrow();
+        var actorUser = userRepo.findById(actor)
+                .orElseThrow(() -> new IllegalArgumentException("ACTOR_NOT_FOUND"));
         if (!actorUser.isActive()) throw new IllegalStateException("ACCOUNT_FROZEN");
-        var cUser = userRepo.findById(post.getCreatorId()).orElseThrow();
+        var cUser = userRepo.findById(post.getCreatorId())
+                .orElseThrow(() -> new IllegalArgumentException("POST_CREATOR_NOT_FOUND"));
         if (!cUser.isActive()) throw new IllegalStateException("TARGET_FROZEN");
 
         double r_c  = (cUser.getCommissionRate() == null) ? 0.0 : cUser.getCommissionRate().doubleValue();
-        UUID s      = post.getOriginalPostId();
-        double rho_s= postRepo.findById(s).orElseThrow().getRoyaltyRate().doubleValue();
+        UUID originalPostId = post.getOriginalPostId();
+        var originalPost = postRepo.findById(originalPostId)
+                .orElseThrow(() -> new IllegalArgumentException("ORIGINAL_POST_NOT_FOUND"));
+        UUID originalCreatorId = originalPost.getCreatorId();
+        double rho_s = originalPost.getRoyaltyRate().doubleValue();
 
         UUID k_m = null;
         if (post.getParentPostId() != null) {
@@ -73,7 +90,13 @@ public class TransactionService {
 
         double c_p = cRepo.findById(actor).orElseThrow().getValue();
 
-        var row = eService.lockAndLoad(actor, Set.of(actor, cUser.getUserId(), s, (k_m != null ? k_m : actor)));
+        var ensureCols = new LinkedHashSet<UUID>();
+        ensureCols.add(actor);
+        ensureCols.add(cUser.getUserId());
+        ensureCols.add(originalCreatorId);
+        if (k_m != null) ensureCols.add(k_m);
+
+        var row = eService.lockAndLoad(actor, ensureCols);
         double Epp = row.cols().get(actor).getValue();
         if (Epp * c_p < ALPHA) throw new IllegalStateException("INSUFFICIENT_PURCHASING_POWER");
 
@@ -82,54 +105,127 @@ public class TransactionService {
 
         eService.add(row.cols().get(actor), -ALPHA);
         eService.add(row.cols().computeIfAbsent(cUser.getUserId(), id -> new EvaluationMatrix(actor, id, 0.0)), Rc);
-        eService.add(row.cols().computeIfAbsent(s,      id -> new EvaluationMatrix(actor, id, 0.0)), rho_s * V);
+
+        double originalShare = rho_s * V;
+        double parentShare = 0.0;
         if (k_m != null) {
-            eService.add(row.cols().computeIfAbsent(k_m, id -> new EvaluationMatrix(actor, id, 0.0)), (1 - rho_s) * V);
+            parentShare = (1 - rho_s) * V;
+        } else {
+            originalShare += (1 - rho_s) * V;
         }
 
-        String details = "{\"c\":\""+cUser.getUserId()+"\",\"r_c\":"+String.format("%.6f", r_c)
+        eService.add(row.cols().computeIfAbsent(originalCreatorId, id -> new EvaluationMatrix(actor, id, 0.0)), originalShare);
+        if (parentShare > 0.0 && k_m != null) {
+            eService.add(row.cols().computeIfAbsent(k_m, id -> new EvaluationMatrix(actor, id, 0.0)), parentShare);
+        }
+
+        String details = "{\"c\":\""+cUser.getUserId()+"\",\"r_c\":"+format6(r_c)
                 +",\"k_m\":"+(k_m==null?"null":"\""+k_m+"\"")
-                +",\"s\":\""+s+"\",\"rho_s\":"+String.format("%.6f", rho_s)+"}";
-        var tx = new TransactionLog("LIKE", actor, post.getPostId(), BigDecimal.valueOf(ALPHA), req.requestId(), details);
+                +",\"s\":\""+originalPostId+"\",\"rho_s\":"+format6(rho_s)+"}";
+        var tx = new TransactionLog("LIKE", actor, post.getPostId(), BigDecimal.valueOf(ALPHA), requestId, details);
         txRepo.save(tx);
     }
 
     @Transactional
     public void quote(QuoteRequest req){
-        if (txRepo.findByRequestId(req.requestId()).isPresent()) return;
+        UUID actor = requireUuid(req.actorId(), "ACTOR_ID_REQUIRED");
+        UUID targetPostId = requireUuid(req.postId(), "POST_ID_REQUIRED");
+        UUID requestId = requireUuid(req.requestId(), "REQUEST_ID_REQUIRED");
+        double beta = resolveBeta(req);
 
-        var quoted = postRepo.findById(req.postId()).orElseThrow();
-        UUID actor = req.actorId();
+        if (txRepo.findByRequestId(requestId).isPresent()) {
+            log.debug("Duplicate quote request {} ignored", requestId);
+            return;
+        }
+
+        var quoted = postRepo.findById(targetPostId)
+                .orElseThrow(() -> new IllegalArgumentException("POST_NOT_FOUND"));
 
         // 凍結チェック（支払者・受益者）
-        var actorUser = userRepo.findById(actor).orElseThrow();
+        var actorUser = userRepo.findById(actor)
+                .orElseThrow(() -> new IllegalArgumentException("ACTOR_NOT_FOUND"));
         if (!actorUser.isActive()) throw new IllegalStateException("ACCOUNT_FROZEN");
-        var targetUser = userRepo.findById(quoted.getCreatorId()).orElseThrow();
+        var targetUser = userRepo.findById(quoted.getCreatorId())
+                .orElseThrow(() -> new IllegalArgumentException("POST_CREATOR_NOT_FOUND"));
         if (!targetUser.isActive()) throw new IllegalStateException("TARGET_FROZEN");
 
-        double beta = (req.betaOverride() != null) ? req.betaOverride().doubleValue() : defaultBeta;
-
-        UUID s = quoted.getOriginalPostId();
+        UUID originalPostId = quoted.getOriginalPostId();
+        if (originalPostId == null) throw new IllegalStateException("ORIGINAL_POST_ID_MISSING");
+        var originalPost = postRepo.findById(originalPostId)
+                .orElseThrow(() -> new IllegalArgumentException("ORIGINAL_POST_NOT_FOUND"));
+        UUID originalCreatorId = originalPost.getCreatorId();
         UUID k_prev = quoted.getCreatorId();
         boolean quotedIsOriginal = (quoted.getParentPostId() == null);
 
-        double rho_s = postRepo.findById(s).orElseThrow().getRoyaltyRate().doubleValue();
+        var royalty = originalPost.getRoyaltyRate();
+        if (royalty == null) throw new IllegalStateException("ORIGINAL_ROYALTY_NOT_SET");
+        double rho_s = royalty.doubleValue();
+        if (Double.isNaN(rho_s) || Double.isInfinite(rho_s) || rho_s < 0.0 || rho_s > 1.0) {
+            throw new IllegalStateException("INVALID_ROYALTY_RATE");
+        }
 
-        double c_k = cRepo.findById(actor).orElseThrow().getValue();
-        var row = eService.lockAndLoad(actor, Set.of(actor, s, k_prev));
+        double c_k = cRepo.findById(actor)
+                .orElseThrow(() -> new IllegalArgumentException("CONTRIBUTION_VECTOR_MISSING")).getValue();
+        var ensureCols = new LinkedHashSet<UUID>();
+        ensureCols.add(actor);
+        ensureCols.add(originalCreatorId);
+        ensureCols.add(k_prev);
+
+        var row = eService.lockAndLoad(actor, ensureCols);
         double Ekk = row.cols().get(actor).getValue();
         if (Ekk * c_k < beta) throw new IllegalStateException("INSUFFICIENT_PURCHASING_POWER");
 
         eService.add(row.cols().get(actor), -beta);
+        double originalShare;
+        double parentShare;
         if (quotedIsOriginal) {
-            eService.add(row.cols().computeIfAbsent(s, id -> new EvaluationMatrix(actor, id, 0.0)), beta);
+            originalShare = beta;
+            parentShare = 0.0;
+            eService.add(row.cols().computeIfAbsent(originalCreatorId, id -> new EvaluationMatrix(actor, id, 0.0)), beta);
         } else {
-            eService.add(row.cols().computeIfAbsent(s,      id -> new EvaluationMatrix(actor, id, 0.0)), rho_s * beta);
-            eService.add(row.cols().computeIfAbsent(k_prev, id -> new EvaluationMatrix(actor, id, 0.0)), (1 - rho_s) * beta);
+            originalShare = rho_s * beta;
+            parentShare = (1 - rho_s) * beta;
+            eService.add(row.cols().computeIfAbsent(originalCreatorId, id -> new EvaluationMatrix(actor, id, 0.0)), originalShare);
+            eService.add(row.cols().computeIfAbsent(k_prev, id -> new EvaluationMatrix(actor, id, 0.0)), parentShare);
         }
 
-        String details = "{\"s\":\""+s+"\",\"rho_s\":"+String.format("%.6f", rho_s)+",\"k_prev\":\""+k_prev+"\"}";
-        var tx = new TransactionLog("QUOTE", actor, quoted.getPostId(), BigDecimal.valueOf(beta), req.requestId(), details);
+        String details = parentShare > 0.0
+                ? String.format("{\"original\":\"%s\",\"quoted_post\":\"%s\",\"beta\":%s,\"rho_s\":%s,\"original_share\":%s,\"parent_share\":{\"user\":\"%s\",\"amount\":%s}}",
+                originalPostId, quoted.getPostId(), format6(beta), format6(rho_s), format6(originalShare), k_prev, format6(parentShare))
+                : String.format("{\"original\":\"%s\",\"quoted_post\":\"%s\",\"beta\":%s,\"rho_s\":%s,\"original_share\":%s,\"parent_share\":null}",
+                originalPostId, quoted.getPostId(), format6(beta), format6(rho_s), format6(originalShare));
+
+        if (log.isDebugEnabled()) {
+            log.debug("Quote tx actor={} post={} beta={} originalShare={} parentShare={}",
+                    actor, targetPostId, format6(beta), format6(originalShare), parentShare > 0.0 ? format6(parentShare) : "0.000000");
+        }
+
+        var tx = new TransactionLog("QUOTE", actor, quoted.getPostId(), BigDecimal.valueOf(beta), requestId, details);
         txRepo.save(tx);
+    }
+
+    private static UUID requireUuid(UUID value, String code) {
+        if (value == null) throw new IllegalArgumentException(code);
+        return value;
+    }
+
+    private double resolveBeta(QuoteRequest req) {
+        double fallback = defaultBeta;
+        if (Double.isNaN(fallback) || Double.isInfinite(fallback) || fallback <= 0.0) {
+            throw new IllegalStateException("INVALID_DEFAULT_BETA");
+        }
+        Double override = req.betaOverride();
+        if (override == null) {
+            return fallback;
+        }
+        double beta = override.doubleValue();
+        if (Double.isNaN(beta) || Double.isInfinite(beta) || beta <= 0.0) {
+            throw new IllegalArgumentException("INVALID_BETA_OVERRIDE");
+        }
+        return beta;
+    }
+
+    private static String format6(double value) {
+        return String.format("%.6f", value);
     }
 }

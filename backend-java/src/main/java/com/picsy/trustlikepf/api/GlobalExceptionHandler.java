@@ -21,6 +21,11 @@ public class GlobalExceptionHandler {
             status = HttpStatus.PRECONDITION_FAILED;
         } else if ("ACCOUNT_FROZEN".equals(code) || "TARGET_FROZEN".equals(code)) { // ★ 追加
             status = HttpStatus.FORBIDDEN;
+        } else if ("INVALID_DEFAULT_BETA".equals(code)
+                || "ORIGINAL_ROYALTY_NOT_SET".equals(code)
+                || "INVALID_ROYALTY_RATE".equals(code)
+                || "ORIGINAL_POST_ID_MISSING".equals(code)) {
+            status = HttpStatus.INTERNAL_SERVER_ERROR;
         }
         return ResponseEntity.status(status).body(new ErrorBody(code, code));
     }
