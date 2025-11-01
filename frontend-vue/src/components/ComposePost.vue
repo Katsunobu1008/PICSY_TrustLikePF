@@ -98,17 +98,19 @@ function short(id) {
 }
 
 async function openComposer() {
-  if (!actor.value) {
-    const ensured = await ensureActorContext()
-    if (!ensured) {
-      isModalOpen.value = true
-      await nextTick()
-      handleNeedsActor()
-      return
-    }
+  if (!isModalOpen.value) {
+    isModalOpen.value = true
+    await nextTick()
   }
 
-  isModalOpen.value = true
+  if (actor.value) {
+    return
+  }
+
+  const ensured = await ensureActorContext()
+  if (!ensured) {
+    handleNeedsActor()
+  }
 }
 
 function closeComposer() {

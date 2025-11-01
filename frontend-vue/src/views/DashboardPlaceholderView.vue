@@ -233,7 +233,7 @@ function reload() {
 async function runRecovery(){
   try{
     // trigger backend recovery job
-    await api.post('/api/admin/recover')
+    await api.post('/admin/recover')
     // refresh dashboard data to reflect changes
     await loadDashboard()
     // small visual confirmation in console (UI will refresh values)
