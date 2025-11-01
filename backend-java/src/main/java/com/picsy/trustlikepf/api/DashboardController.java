@@ -7,13 +7,14 @@ import java.util.stream.Collectors;
 import org.springframework.web.bind.annotation.*;
 
 import com.picsy.trustlikepf.api.dto.ActiveUsersResponse;
-import com.picsy.trustlikepf.api.dto.EvalMatrixResponse;
+import com.picsy.trustlikepf.api.dto.DashboardEvaluationResponse;
 import com.picsy.trustlikepf.domain.entity.ContributionVector;
 import com.picsy.trustlikepf.domain.entity.EvaluationMatrix;
 import com.picsy.trustlikepf.domain.entity.User;
 import com.picsy.trustlikepf.domain.repository.ContributionVectorRepository;
 import com.picsy.trustlikepf.domain.repository.EvaluationMatrixRepository;
 import com.picsy.trustlikepf.domain.repository.UserRepository;
+import com.picsy.trustlikepf.domain.service.DashboardMetricsService;
 
 @RestController
 @RequestMapping("/api/v1/dashboard")
@@ -21,11 +22,16 @@ public class DashboardController {
     private final ContributionVectorRepository cRepo;
     private final EvaluationMatrixRepository eRepo;
     private final UserRepository userRepo;
+    private final DashboardMetricsService metricsService;
 
     public DashboardController(ContributionVectorRepository cRepo,
                                EvaluationMatrixRepository eRepo,
-                               UserRepository userRepo) {
-        this.cRepo = cRepo; this.eRepo = eRepo; this.userRepo = userRepo;
+                               UserRepository userRepo,
+                               DashboardMetricsService metricsService) {
+        this.cRepo = cRepo;
+        this.eRepo = eRepo;
+        this.userRepo = userRepo;
+        this.metricsService = metricsService;
     }
 
     // 既存: 単ユーザーの核心指標（MapのままでOK）
@@ -51,18 +57,23 @@ public class DashboardController {
 
     // ✅ 追加: 評価行列（アクティブ×アクティブ）（DTOで返す）
     @GetMapping("/eval-matrix")
-    public EvalMatrixResponse evalMatrixActiveOnly(){
+    public com.picsy.trustlikepf.api.dto.EvalMatrixResponse evalMatrixActiveOnly(){
         List<User> active = userRepo.findByIsActiveTrue();
         Set<UUID> activeIds = active.stream().map(User::getUserId).collect(Collectors.toSet());
 
-        var rows = new ArrayList<EvalMatrixResponse.Row>();
+        var rows = new ArrayList<com.picsy.trustlikepf.api.dto.EvalMatrixResponse.Row>();
         for (User i : active) {
             for (var em : eRepo.findByEvaluator(i.getUserId())) {
                 UUID j = em.getId().getEvaluateeId();
                 if (!activeIds.contains(j)) continue; // アクティブのみ
-                rows.add(new EvalMatrixResponse.Row(i.getUserId(), j, em.getValue()));
+                rows.add(new com.picsy.trustlikepf.api.dto.EvalMatrixResponse.Row(i.getUserId(), j, em.getValue()));
             }
         }
-        return new EvalMatrixResponse(true, rows);
+        return new com.picsy.trustlikepf.api.dto.EvalMatrixResponse(true, rows);
+    }
+
+    @GetMapping("/evaluation-summary")
+    public DashboardEvaluationResponse evaluationSummary() {
+        return metricsService.summarize();
     }
 }
