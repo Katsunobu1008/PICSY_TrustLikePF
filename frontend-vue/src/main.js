@@ -6,7 +6,7 @@ import router from './router'
 import App from './App.vue'
 import './assets/main.css'
 
-import { setActor, startPolling } from './stores/power'
+import { rememberActors, setActor, startPolling } from './stores/power'
 import api from './lib/api'
 
 const app = createApp(App)
@@ -25,9 +25,11 @@ async function bootstrapActorContext() {
 
   try {
     const { data } = await api.get('/v1/dashboard/active-users')
+    rememberActors(data?.users)
     const first = data?.users?.[0]?.userId
     if (first) {
-      setActor(first)
+      const firstName = data?.users?.[0]?.name || null
+      setActor(first, firstName)
       router.replace({
         path: current.path,
         query: { ...current.query, actor: first },

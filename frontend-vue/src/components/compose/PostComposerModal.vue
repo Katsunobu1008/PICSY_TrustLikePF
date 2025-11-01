@@ -36,10 +36,10 @@
             </div>
             <div>
               <p class="text-sm font-semibold text-slate-900">
-                {{ actor ? `Actor ${short(actor)}` : 'アクター未設定' }}
+                {{ props.actor ? (props.actorName || `Actor ${short(props.actor)}`) : 'アクター未設定' }}
               </p>
               <p class="text-xs text-muted">
-                {{ actor ? '投稿は即座にフィードへ反映されます。' : '投稿するにはアクターを設定してください。' }}
+                {{ props.actor ? '投稿は即座にフィードへ反映されます。' : '投稿するにはアクターを設定してください。' }}
               </p>
             </div>
           </div>
@@ -133,6 +133,7 @@ import api from '../../lib/api'
 
 const props = defineProps({
   actor: { type: String, default: null },
+  actorName: { type: String, default: null },
   defaultRoyalty: { type: Number, default: 0.7 },
 })
 
@@ -175,7 +176,11 @@ const canSubmit = computed(
 )
 
 const statusClass = computed(() => (ok.value ? 'text-emerald-600' : 'text-rose-600'))
-const actorInitials = computed(() => (props.actor ? String(props.actor).slice(0, 2).toUpperCase() : '?'))
+const actorInitials = computed(() => {
+  if (props.actorName) return props.actorName.slice(0, 2).toUpperCase()
+  if (props.actor) return String(props.actor).slice(0, 2).toUpperCase()
+  return '?'
+})
 
 watch(
   () => props.defaultRoyalty,

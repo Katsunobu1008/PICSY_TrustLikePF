@@ -5,6 +5,8 @@ import api from '../lib/api'
 
 const state = reactive({
   actor: null,
+  actorName: null,
+  directory: {},
   eii: 1.0,
   c: 1.0,
   power: 1.0,
@@ -15,15 +17,35 @@ export function getState() {
   return state
 }
 
-export function setActor(actorId) {
+export function setActor(actorId, actorName = null) {
   state.actor = actorId || null
   if (state.actor) {
+    const label = actorName || state.directory[state.actor] || null
+    state.actorName = label
     refreshOnce().finally(() => window.dispatchEvent(new CustomEvent('timeline:refresh')))
+  } else {
+    state.actorName = null
   }
 }
 
 export function optimisticSpend(cost) {
   state.power = Math.max(0, state.power - Number(cost || 0))
+}
+
+export function rememberActors(list = []) {
+  let touched = false
+  for (const item of list) {
+    const id = item?.userId
+    const label = item?.name || item?.handle || null
+    if (!id || !label) continue
+    if (state.directory[id] !== label) {
+      state.directory[id] = label
+      touched = true
+    }
+  }
+  if (touched && state.actor) {
+    state.actorName = state.directory[state.actor] || state.actorName
+  }
 }
 
 export async function refreshOnce() {

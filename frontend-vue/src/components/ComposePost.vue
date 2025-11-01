@@ -9,7 +9,7 @@
         </div>
         <div>
           <p class="text-sm font-semibold text-slate-900">
-            {{ actor ? `Actor ${short(actor)}` : 'アクター未設定' }}
+            {{ actorName || (actor ? `Actor ${short(actor)}` : 'アクター未設定') }}
           </p>
           <p class="text-xs text-muted">
             {{ actor ? '今のアイデアを共有するとフィードが即時に更新されます。' : 'トップバーからアクターを設定すると投稿できます。' }}
@@ -66,6 +66,7 @@
     <PostComposerModal
       v-if="isModalOpen"
       :actor="actor"
+      :actor-name="actorName"
       :default-royalty="DEFAULT_ROYALTY"
       @close="closeComposer"
       @posted="handlePosted"
@@ -79,11 +80,16 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PostComposerModal from './compose/PostComposerModal.vue'
 import api from '../lib/api'
-import { getState, setActor as setActorContext } from '../stores/power'
+import { getState, rememberActors, setActor as setActorContext } from '../stores/power'
 
 const state = getState()
 const actor = computed(() => state.actor)
-const actorInitials = computed(() => (actor.value ? String(actor.value).slice(0, 2).toUpperCase() : '?'))
+const actorName = computed(() => state.actorName || (actor.value ? state.directory?.[actor.value] : null))
+const actorInitials = computed(() => {
+  if (actorName.value) return actorName.value.slice(0, 2).toUpperCase()
+  if (actor.value) return String(actor.value).slice(0, 2).toUpperCase()
+  return '?'
+})
 
 const isModalOpen = ref(false)
 const toast = ref('')
@@ -141,17 +147,19 @@ async function ensureActorContext() {
   ensuringActor.value = true
   try {
     const { data } = await api.get('/v1/dashboard/active-users')
+    rememberActors(data?.users)
     const fallback = data?.users?.[0]?.userId
+    const fallbackName = data?.users?.[0]?.name || null
     if (!fallback) {
       setToast('アクター候補が見つかりません。トップバーから選択してください。')
       return false
     }
 
-    setActorContext(fallback)
+    setActorContext(fallback, fallbackName)
     await router.replace({
       query: { ...route.query, actor: fallback },
     })
-    setToast(`アクターを自動設定しました (Actor ${short(fallback)})`)
+    setToast(`アクターを自動設定しました (${fallbackName || `Actor ${short(fallback)}`})`)
     return true
   } catch (error) {
     console.warn('auto actor assignment failed', error)
