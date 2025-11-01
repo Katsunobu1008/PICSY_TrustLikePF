@@ -16,6 +16,13 @@
         >
           🔄 最新情報に更新
         </button>
+        <button
+          type="button"
+          class="ml-3 inline-flex items-center gap-2 rounded-full border border-outline px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+          @click="runRecovery"
+        >
+          ♻️ 自然回収を実行
+        </button>
       </header>
 
       <div v-if="loading" class="mt-6 grid gap-4 sm:grid-cols-3">
@@ -221,6 +228,21 @@ function alignUsers(order = [], users = []) {
 
 function reload() {
   loadDashboard()
+}
+
+async function runRecovery(){
+  try{
+    // trigger backend recovery job
+    await api.post('/api/admin/recover')
+    // refresh dashboard data to reflect changes
+    await loadDashboard()
+    // small visual confirmation in console (UI will refresh values)
+    console.info('Recovery run: dashboard reloaded')
+  }catch(e){
+    console.error('Recovery failed', e)
+    // surface error in UI
+    error.value = e?.response?.data?.message || e?.message || '自然回収の実行に失敗しました。'
+  }
 }
 
 onMounted(() => {

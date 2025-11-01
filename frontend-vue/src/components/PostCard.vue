@@ -24,7 +24,7 @@
         >
           ρ {{ Number(post.royaltyRate).toFixed(2) }}
         </span>
-        <div class="text-xs text-muted">
+        <div v-if="interactionStatus" class="text-xs text-muted">
           <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1">
             <span class="h-2 w-2 rounded-full bg-emerald-400" />
             {{ interactionStatus }}
@@ -145,7 +145,7 @@ const interactionStatus = computed(() => {
   if (!state.actor) return 'アクター未設定'
   const likeOk = afford.value.likeReason === 'OK'
   const quoteOk = afford.value.quoteReason === 'OK'
-  if (likeOk && quoteOk) return 'すべてのアクションが可能です'
+  if (likeOk && quoteOk) return ''
   if (likeOk || quoteOk) return likeOk ? 'Like は実行可能' : 'Quote は実行可能'
   const reason = afford.value.likeReason || afford.value.quoteReason || 'FETCH_FAILED'
   return affordanceReasonMessage(reason)

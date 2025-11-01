@@ -76,8 +76,10 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import PostComposerModal from './compose/PostComposerModal.vue'
-import { getState } from '../stores/power'
+import api from '../lib/api'
+import { getState, setActor as setActorContext } from '../stores/power'
 
 const state = getState()
 const actor = computed(() => state.actor)
@@ -87,17 +89,26 @@ const isModalOpen = ref(false)
 const toast = ref('')
 const DEFAULT_ROYALTY = 0.7
 let toastTimer = null
+const ensuringActor = ref(false)
+const route = useRoute()
+const router = useRouter()
 
 function short(id) {
   return id ? String(id).slice(0, 8) : ''
 }
 
 async function openComposer() {
-  isModalOpen.value = true
   if (!actor.value) {
-    await nextTick()
-    handleNeedsActor()
+    const ensured = await ensureActorContext()
+    if (!ensured) {
+      isModalOpen.value = true
+      await nextTick()
+      handleNeedsActor()
+      return
+    }
   }
+
+  isModalOpen.value = true
 }
 
 function closeComposer() {
@@ -120,6 +131,33 @@ function handlePosted() {
 
 function handleNeedsActor() {
   if (!actor.value) setToast('投稿するにはアクターを設定してください。')
+}
+
+async function ensureActorContext() {
+  if (actor.value || ensuringActor.value) return true
+
+  ensuringActor.value = true
+  try {
+    const { data } = await api.get('/v1/dashboard/active-users')
+    const fallback = data?.users?.[0]?.userId
+    if (!fallback) {
+      setToast('アクター候補が見つかりません。トップバーから選択してください。')
+      return false
+    }
+
+    setActorContext(fallback)
+    await router.replace({
+      query: { ...route.query, actor: fallback },
+    })
+    setToast(`アクターを自動設定しました (Actor ${short(fallback)})`)
+    return true
+  } catch (error) {
+    console.warn('auto actor assignment failed', error)
+    setToast('アクターの自動設定に失敗しました。トップバーから設定してください。')
+    return false
+  } finally {
+    ensuringActor.value = false
+  }
 }
 
 function handleGlobalCompose() {
