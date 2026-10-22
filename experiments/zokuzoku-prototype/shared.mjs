@@ -1,0 +1,21 @@
+const palettes={soft:['#fbe6de','#f5b5a6','#a15b82','#794f7c'],retro:['#fff0cb','#eea34f','#476c60','#e07465'],minimal:['#efebe8','#aea7ab','#535b70','#2b293c'],pop:['#e8dfff','#9786e8','#4b6bc7','#fd9a96']};
+const safe=(s)=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+export function checkPrompt(prompt){if(!prompt||prompt.length<4)return {ok:false,reason:'どんなグッズが欲しいか、4文字以上で入力してください。'};if(prompt.length>700)return {ok:false,reason:'入力は700文字以内にしてください。'};return {ok:true};}
+export function createMockSvg(prompt,kind='acrylic',style='soft'){
+ const pal=palettes[style]||palettes.soft;
+ const palette=pal.join('');let seed=0;for (const ch of prompt+kind+style)seed=(seed*31+ch.charCodeAt(0))>>>0;
+ const rotate=(seed%25)-12;const blob=60+(seed%30);
+ const mascot=`<g transform="translate(300 264) rotate(${rotate})"><ellipse cx="0" cy="96" rx="99" ry="19" fill="#554870" opacity=".11"/><ellipse cx="0" cy="11" rx="88" ry="94" fill="${pal[1]}"/><circle cx="-56" cy="-61" r="29" fill="${pal[1]}"/><circle cx="56" cy="-61" r="29" fill="${pal[1]}"/><ellipse cx="0" cy="-5" rx="69" ry="76" fill="${pal[0]}"/><circle cx="-25" cy="-5" r="6" fill="#332638"/><circle cx="25" cy="-5" r="6" fill="#332638"/><ellipse cx="0" cy="17" rx="9" ry="7" fill="${pal[3]}"/><path d="M-12 29q12 12 24 0" fill="none" stroke="#6b4f60" stroke-width="4" stroke-linecap="round"/><ellipse cx="-57" cy="20" rx="13" ry="8" fill="#ec8490" opacity=".65"/><ellipse cx="57" cy="20" rx="13" ry="8" fill="#ec8490" opacity=".65"/><path d="M-29 78q29 24 58 0" stroke="${pal[2]}" stroke-width="5" fill="none" stroke-linecap="round"/></g>`;
+ let product='';
+ if(kind==='acrylic')product=`<rect x="188" y="384" width="224" height="26" rx="13" fill="${pal[2]}"/><rect x="198" y="367" width="204" height="26" rx="13" fill="${pal[3]}" opacity=".45"/><rect x="190" y="110" width="220" height="266" rx="85" fill="#fff" opacity=".28" stroke="white" stroke-width="10"/>${mascot}`;
+ if(kind==='keychain')product=`<circle cx="300" cy="94" r="36" fill="none" stroke="#b2adb9" stroke-width="16"/><path d="M300 130v18" stroke="#aaa1b4" stroke-width="9"/>${mascot}<path d="M220 357Q300 418 380 357" stroke="${pal[3]}" stroke-width="9" fill="none" opacity=".35"/>`;
+ if(kind==='tote')product=`<path d="M236 171C236 60 364 60 364 171" stroke="${pal[2]}" stroke-width="24" fill="none"/><path d="M170 163h260l-25 284H195z" fill="#f9f4e9" stroke="#e0d8cc" stroke-width="6"/> <g transform="translate(0 78) scale(.75)">${mascot}</g>`;
+ if(kind==='sticker')product=`<path d="M300 58Q447 67 460 224Q470 393 301 434Q122 423 139 224Q141 83 300 58" fill="white" stroke="white" stroke-width="18"/>${mascot}`;
+ const bubbles=Array.from({length:7},(_,i)=>`<circle cx="${70+((seed+i*187)%470)}" cy="${48+((seed+i*91)%395)}" r="${5+((seed+i*23)%14)}" fill="${pal[(i+1)%4]}" opacity=".25"/>`).join('');
+ return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="510" viewBox="0 0 600 510"><rect width="600" height="510" rx="30" fill="${pal[0]}"/><circle cx="500" cy="90" r="${blob}" fill="white" opacity=".24"/>${bubbles}<ellipse cx="300" cy="457" rx="178" ry="23" fill="#201a2f" opacity=".07"/>${product}<text x="300" y="477" font-size="16" fill="${pal[3]}" font-family="sans-serif" text-anchor="middle" opacity=".7">ZOKUZOKU / CONCEPT SAMPLE</text></svg>`)}`;
+}
+export function makeSeedItems(){return [
+{id:'seed-01',title:'ふわっと、今日も。',author:'はる',kind:'acrylic',style:'soft',prompt:'小さな架空のカワウソのアクリルスタンド。淡い色、デスクになじむ大人かわいい雰囲気',price:2400,votes:83,parentId:null,mode:'demo'},
+{id:'seed-02',title:'森の小さな相棒',author:'mio',kind:'keychain',style:'retro',prompt:'架空の森の動物、くすみ色、やさしいレトロなキーホルダー',price:1800,votes:112,parentId:'seed-01',mode:'demo'},
+{id:'seed-03',title:'いつものトート',author:'koto',kind:'tote',style:'minimal',prompt:'落ち着いたデザインの布製トート、さりげない架空の動物モチーフ',price:3200,votes:64,parentId:null,mode:'demo'},
+{id:'seed-04',title:'ぽかぽかステッカー',author:'sora',kind:'sticker',style:'pop',prompt:'オリジナルの動物キャラクター、気分が明るくなるステッカー',price:900,votes:146,parentId:'seed-02',mode:'demo'}].map(p=>({...p,image:createMockSvg(p.prompt,p.kind,p.style)}));}
